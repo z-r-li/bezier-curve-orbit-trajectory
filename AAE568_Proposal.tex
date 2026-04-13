@@ -1,0 +1,123 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=0.85in, top=0.75in]{geometry}
+\usepackage{setspace}
+\singlespacing
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+
+\titlespacing*{\section}{0pt}{6pt}{2pt}
+\titlespacing*{\subsection}{0pt}{4pt}{1pt}
+\setlength{\parskip}{1.5pt}
+\setlength{\abovedisplayskip}{4pt}
+\setlength{\belowdisplayskip}{4pt}
+\setlength{\abovedisplayshortskip}{2pt}
+\setlength{\belowdisplayshortskip}{2pt}
+
+% Compact title
+\usepackage{titling}
+\setlength{\droptitle}{-3.5em}
+\pretitle{\begin{center}\large\bfseries}
+\posttitle{\end{center}\vspace{-1em}}
+\preauthor{\begin{center}\normalsize}
+\postauthor{\end{center}\vspace{-1.5em}}
+\predate{}
+\postdate{}
+
+% Compact abstract
+\renewenvironment{abstract}{%
+  \vspace{0.5em}\noindent\textbf{Abstract.}\itshape\small}{\par\vspace{0.5em}}
+
+% Compact bibliography
+\let\OLDthebibliography\thebibliography
+\renewcommand\thebibliography[1]{
+  \OLDthebibliography{#1}
+  \setlength{\parskip}{0pt}
+  \setlength{\itemsep}{0pt plus 0.2ex}
+  \footnotesize
+}
+
+\title{B\'{e}zier Curve Collocation for Optimal Trajectory Design\\in Cislunar Space: A Comparison with the Shooting Method}
+\author{Mustakeen Bari, Zhuorui Li, Advait Jawaji\\
+\small AAE 568 -- Applied Optimal Control and Estimation, Purdue University, Spring 2026}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This project investigates B\'{e}zier curve collocation as an alternative numerical method for solving the two-point boundary value problems (TPBVPs) arising from optimal control formulations of cislunar trajectory design. We consider a minimum-fuel transfer from low Earth orbit (LEO) to a near-rectilinear halo orbit (NRHO) in the Earth--Moon circular restricted three-body problem (CR3BP), motivated by NASA's Artemis/Gateway architecture. The optimal control problem is formulated via Pontryagin's Maximum Principle, yielding a Hamiltonian TPBVP with coupled state and costate dynamics. We propose to solve this TPBVP using B\'{e}zier curves in the Bernstein polynomial basis and compare results against the classical shooting method in terms of convergence, sensitivity to initial guesses, and computational cost.
+\end{abstract}
+
+\section{Introduction}
+
+Optimal trajectory design is a central problem in astrodynamics. In the optimal control framework, such problems are formulated by defining a cost functional---typically fuel consumption or transfer time---subject to spacecraft dynamics and boundary conditions. Applying Pontryagin's Maximum Principle transforms the problem into a TPBVP involving state and costate variables, where the state equations propagate forward and the costate equations backward in time~\cite{bryson1975applied, pontryagin1962}.
+
+The shooting method is the classical approach for solving these TPBVPs: guess the unknown initial costates, propagate forward, and iteratively correct based on terminal constraint violations. While effective for simpler problems, it is notoriously sensitive to initial guesses in highly nonlinear environments such as the cislunar three-body problem, where poor guesses often cause divergence~\cite{choi2025bezier}.
+
+B\'{e}zier curves in the Bernstein polynomial basis offer an alternative for trajectory parameterization. A degree-$n$ curve is defined by $n+1$ control points $\mathbf{P}_i$ and parameter $t \in [0,1]$:
+\begin{equation}
+\mathbf{r}(t) = \sum_{i=0}^{n} \binom{n}{i} (1-t)^{n-i} t^{i} \, \mathbf{P}_i
+\end{equation}
+Key properties include endpoint interpolation ($\mathbf{r}(0) = \mathbf{P}_0$, $\mathbf{r}(1) = \mathbf{P}_n$), the convex hull property, and smoothness. Multiple segments can be joined to form B-splines for complex trajectories. In the TPBVP context, optimization reduces from finding a continuous trajectory to determining a finite set of control points, improving robustness and efficiency~\cite{howell2016spline, shin2024bezier}. This approach has been validated for constrained optimal control of time-varying linear systems~\cite{ghomanjani2012bezier} and extended to spacecraft trajectory shaping problems~\cite{fan2020bezier, cichella2021optimal}.
+
+\section{Problem Formulation}
+
+\subsection{Dynamical Model}
+
+We consider spacecraft motion in the Earth--Moon CR3BP. In the rotating barycentric frame, the equations of motion are:
+\begin{equation}
+\ddot{x} - 2\dot{y} = \frac{\partial \bar{U}}{\partial x}, \quad
+\ddot{y} + 2\dot{x} = \frac{\partial \bar{U}}{\partial y}, \quad
+\ddot{z} = \frac{\partial \bar{U}}{\partial z}
+\end{equation}
+where $\bar{U}$ is the pseudo-potential and $\mu$ is the Earth--Moon mass parameter. The state is $\mathbf{x} = [x, y, z, \dot{x}, \dot{y}, \dot{z}]^T$ and the control $\mathbf{u}$ is the thrust acceleration.
+
+The target orbit is a near-rectilinear halo orbit (NRHO) about the Earth--Moon $L_2$ point, the same class of orbit selected for NASA's Lunar Gateway~\cite{zimovan2017near}. NRHOs are attractive for their near-stability, favorable communication geometry, and low stationkeeping costs, but their design within the CR3BP introduces strong nonlinearity that challenges classical numerical methods.
+
+\subsection{Optimal Control Formulation}
+
+The objective is a minimum-fuel transfer from LEO to the target NRHO. The cost functional is:
+\begin{equation}
+J = \int_{t_0}^{t_f} \|\mathbf{u}(t)\|^2 \, dt
+\end{equation}
+subject to controlled dynamics $\dot{\mathbf{x}} = \mathbf{f}(\mathbf{x}, \mathbf{u}, t)$ with $\mathbf{x}(t_0) = \mathbf{x}_{\text{LEO}}$ and $\mathbf{x}(t_f) = \mathbf{x}_{\text{NRHO}}$.
+The Hamiltonian $H = \|\mathbf{u}\|^2 + \boldsymbol{\lambda}^T \mathbf{f}(\mathbf{x}, \mathbf{u}, t)$ yields the necessary conditions:
+\begin{equation}
+\dot{\mathbf{x}} = \frac{\partial H}{\partial \boldsymbol{\lambda}}, \quad
+\dot{\boldsymbol{\lambda}} = -\frac{\partial H}{\partial \mathbf{x}}, \quad
+\frac{\partial H}{\partial \mathbf{u}} = 0
+\end{equation}
+The stationarity condition gives $\mathbf{u}^* = -\frac{1}{2}\boldsymbol{\lambda}_v$, producing a 12-dimensional TPBVP with split boundary conditions---states specified at both ends, costates unknown.
+
+\section{Proposed Approach}
+
+We solve the TPBVP using two methods and compare their performance:
+
+\textbf{(1) Classical Shooting Method:} Guess initial costates $\boldsymbol{\lambda}(t_0)$, propagate the state-costate system, and use Newton iterations to satisfy terminal constraints.
+
+\textbf{(2) B\'{e}zier Curve Collocation:} Represent state and costate trajectories as composite B\'{e}zier curves. Boundary conditions are enforced via endpoint interpolation. Dynamics are satisfied at collocation points, converting the TPBVP into a nonlinear program (NLP) over control point coordinates. The convex hull property constrains the solution space, and the low-dimensional parameterization is expected to improve robustness to initial guesses.
+
+The project follows a phased approach. We first validate both methods on the planar CR3BP (e.g., $L_1$/$L_2$ Lyapunov orbit transfers) and then extend to the full three-dimensional LEO-to-NRHO transfer. The comparison metrics include convergence rate, basin of convergence size as a function of initial guess quality, and wall-clock computation time.
+
+\section{Conclusion}
+
+This project bridges optimal control theory with computational trajectory design by applying B\'{e}zier curve collocation to the TPBVP from cislunar transfer optimization. The NRHO target, motivated by Artemis/Gateway, provides a challenging and practically relevant test case in the nonlinear CR3BP for evaluating this approach against classical shooting methods.
+
+\begin{thebibliography}{99}
+\bibitem{bryson1975applied} A.~E. Bryson and Y.-C. Ho, \textit{Applied Optimal Control}, Taylor \& Francis, 1975.
+\bibitem{pontryagin1962} L.~S. Pontryagin et al., \textit{The Mathematical Theory of Optimal Processes}, Interscience, 1962.
+\bibitem{kirk2004optimal} D.~E. Kirk, \textit{Optimal Control Theory: An Introduction}, Dover, 2004.
+\bibitem{choi2025bezier} D.~Choi et al., ``Effective Initial Guess Finding Based on B\'{e}zier Curves: Orbit Determination,'' \textit{arXiv}, 2025.
+\bibitem{howell2016spline} L.~Howell et al., ``Spline Trajectory Algorithm Development: B\'{e}zier Curve Control Point Generation for UAVs,'' \textit{AIAA}, 2016.
+\bibitem{shin2024bezier} V.~Shin et al., ``B\'{e}zier Curves for Smooth Entry into Elliptic Orbits,'' \textit{Int.\ J.\ Aeronaut.\ Space Sci.}, 2024.
+\bibitem{ghomanjani2012bezier} F.~Ghomanjani and M.~H. Farahi, ``B\'{e}zier Control Points Method to Solve Constrained Quadratic Optimal Control,'' \textit{Comput.\ Appl.\ Math.}, 31(3):433--456, 2012.
+\bibitem{fan2020bezier} Z.~Fan et al., ``Initial Design of Low-Thrust Trajectories Based on B\'{e}zier Curve Shaping,'' \textit{Proc.\ IMechE Part G}, 235(3):364--374, 2021.
+\bibitem{cichella2021optimal} V.~Cichella et al., ``Optimal Output Trajectory Shaping Using B\'{e}zier Curves,'' \textit{J.\ Guid.\ Control Dyn.}, 44(5), 2021.
+\bibitem{zimovan2017near} E.~M. Zimovan, K.~C. Howell, and D.~C. Davis, ``Near Rectilinear Halo Orbits and Their Application in Cis-Lunar Space,'' \textit{AAS 17-269}, 2017.
+\end{thebibliography}
+
+\end{document}
