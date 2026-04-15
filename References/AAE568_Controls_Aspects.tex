@@ -1,0 +1,281 @@
+\documentclass[11pt,letterpaper]{article}
+
+% ─── Packages ─────────────────────────────────────────────────────────
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{setspace}
+
+% ─── Colors ───────────────────────────────────────────────────────────
+\definecolor{darkblue}{HTML}{1F3864}
+\definecolor{medblue}{HTML}{2E5090}
+\definecolor{lightblue}{HTML}{3A6EB5}
+\definecolor{gray60}{HTML}{999999}
+
+% ─── Section formatting ──────────────────────────────────────────────
+\titleformat{\section}{\Large\bfseries\color{darkblue}}{}{0em}{}
+\titleformat{\subsection}{\large\bfseries\color{medblue}}{}{0em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{lightblue}}{}{0em}{}
+
+% ─── Header / footer ─────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{\textit{\small\color{gray60}AAE 568 --- Controls Aspects in Course Project}}
+\fancyfoot[C]{\small\color{gray60}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ─── Hyperlinks ──────────────────────────────────────────────────────
+\hypersetup{colorlinks=true,linkcolor=medblue,urlcolor=medblue}
+
+% ─── Document ─────────────────────────────────────────────────────────
+\begin{document}
+
+
+% ======================================================================
+\section{1.\quad The Big Picture}
+% ======================================================================
+
+At its core, this project asks a question that sits squarely in AAE~568: \emph{given a spacecraft whose motion is governed by a known set of differential equations, find the control history $u(t)$ that steers it from an initial state to a desired final state while minimizing a cost functional.} That is the definition of an optimal control problem, and the theory we use to solve it---Hamiltonian mechanics, Pontryagin's Minimum Principle, the two-point boundary value problem, and numerical shooting---comes directly from the course.
+
+What makes the project more than a homework exercise is the \emph{setting}: the dynamics are the nonlinear, three-dimensional Circular Restricted Three-Body Problem (CR3BP), the boundary conditions are a 185\,km LEO and a 9:2 near-rectilinear halo orbit around Earth--Moon~$L_2$, and the cost functionals span minimum energy, minimum time, and minimum fuel. The nonlinearity and high dimensionality of this problem force us to go beyond the analytical examples worked in class and develop numerical infrastructure---direct collocation, mesh refinement, homotopy continuation---that \emph{extends} the course material. But every extension rests on a foundation that was taught in the lectures.
+
+This document tells that story in three acts: the theory that comes straight from the course (\S2--3), the numerical method the course teaches for solving the resulting problem (\S4), and the techniques we built on top of that foundation when the course's tools alone were not enough (\S5--6).
+
+
+% ======================================================================
+\section{2.\quad The Theory---Directly from AAE 568}
+% ======================================================================
+
+The theoretical backbone of our project is the material from the first half of the semester: static optimization, calculus of variations, and the Minimum Principle. We did not modify or extend this theory---we \emph{applied} it, in the same way the course applies it to the chemical reactor and double-integrator examples, just on harder dynamics.
+
+
+\subsection{2.1\quad Formulating the Bolza Problem (Lecture Notes, pp.~141--142)}
+
+The course defines the general optimal control problem in Bolza form:
+\[
+  \min\; J = \phi\bigl(x(t_f),\, t_f\bigr)
+           + \int_{t_0}^{t_f} \mathcal{L}\bigl(x,\,u,\,t\bigr)\,dt,
+  \qquad
+  \text{s.t.}\;\; \dot{x} = f(x,u,t),\;\; x(t_0) = x_0.
+\]
+Our project is a direct instantiation of this template. The state is $x = [x,y,z,v_x,v_y,v_z]^\top$ (position and velocity in the rotating frame), the control is $u = [u_x,u_y,u_z]^\top$ (low-thrust acceleration), and $f$ is the CR3BP dynamics augmented by the control. We set $\phi = 0$ and work with three different running costs:
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Minimum energy:} $\mathcal{L} = \|u\|^2$, which is the quadratic cost from lecture (p.~142) with $Q=0$, $R=I$.
+  \item \textbf{Minimum time:} $\mathcal{L} = 1$, so $J = t_f - t_0$, with $t_f$ free.
+  \item \textbf{Minimum fuel:} $\mathcal{L} = \|u\|$, the $L^1$ norm that promotes sparsity in the control.
+\end{itemize}
+
+There is nothing novel in this formulation step---it is the direct application of the framework from the notes. The novelty is only in the choice of $f$, which happens to be a 6D nonlinear system with two gravitational singularities rather than the 2D examples in the lectures.
+
+
+\subsection{2.2\quad The Hamiltonian and Euler--Lagrange Equations (pp.~143--147)}
+
+Following the calculus of variations development in class, we adjoin the dynamics constraint with a costate $\lambda(t)$ and define the Hamiltonian:
+\[
+  \mathcal{H} = \mathcal{L}(x,u) + \lambda^\top f(x,u).
+\]
+Setting $\delta J_a = 0$ produces the three Euler--Lagrange necessary conditions. For our minimum-energy CR3BP problem, these become:
+
+\medskip
+\noindent\textbf{(a) Costate equation} $\dot{\lambda} = -(\partial\mathcal{H}/\partial x)^\top$:
+\[
+  \dot{\lambda}_r = -\mathbf{U}_{xx}\,\lambda_v,
+  \qquad
+  \dot{\lambda}_{v_x} = -\lambda_{r_x} + 2\lambda_{v_y},
+  \qquad
+  \dot{\lambda}_{v_y} = -\lambda_{r_y} - 2\lambda_{v_x},
+  \qquad
+  \dot{\lambda}_{v_z} = -\lambda_{r_z},
+\]
+where $\mathbf{U}_{xx}$ is the $3\times 3$ Hessian of the CR3BP pseudo-potential and the $\pm 2$ terms come from the Coriolis acceleration. This is the same $\dot{\lambda} = -(\partial f/\partial x)^\top \lambda$ structure from the lectures, just evaluated for a more complex $f$.
+
+\medskip
+\noindent\textbf{(b) Transversality} $\lambda(t_f) = (\partial\phi/\partial x)^\top|_{t_f}$: since $\phi = 0$ and the final state is fixed, the terminal costates are free (they are what we solve for).
+
+\medskip
+\noindent\textbf{(c) Stationarity} $\partial\mathcal{H}/\partial u = 0$: for the quadratic running cost,
+\[
+  2u + \lambda_v = 0
+  \quad\Longrightarrow\quad
+  u^* = -\tfrac{1}{2}\,\lambda_v.
+\]
+This is the optimal control law. It appears verbatim in our code as \texttt{u = -0.5 * lam\_v} (line~47 for two-body, line~179 for CR3BP in \texttt{dynamics.py}). The form is identical to the ``linear state feedback'' result that Kalman's LQR produces for the quadratic cost---our system is not linear, but the optimal control still depends linearly on the costate because the cost is quadratic in $u$.
+
+
+\subsection{2.3\quad Pontryagin's Minimum Principle (pp.~153--160)}
+
+When we impose a thrust bound $\|u\| \leq u_{\max}$, the unconstrained stationarity condition no longer applies. The course replaces it with PMP:
+\[
+  \mathcal{H}(x^*,u^*,\lambda^*,t)
+  \;\leq\;
+  \mathcal{H}(x^*,u,\lambda^*,t)
+  \qquad \forall\, u \in U.
+\]
+For the minimum-time problem ($\mathcal{L}=1$), minimizing $\mathcal{H} = 1 + \lambda^\top f$ over the admissible set gives the bang-bang control law derived in the lectures (pp.~170--180):
+\[
+  u^*(t) = -u_{\max}\,\frac{\lambda_v}{\|\lambda_v\|}.
+\]
+The thrust is always at maximum magnitude, pointing opposite to the velocity costate. This is implemented directly in \texttt{dynamics.py} (lines~62--89). The switching function, the bang-bang structure, the relationship between $\lambda_v$ and the optimal thrust direction---all of this is textbook AAE~568.
+
+
+\subsection{2.4\quad Transversality for Free Final Time (pp.~150--152)}
+
+For the minimum-time problem, $t_f$ is not given. The course derives the additional necessary condition:
+\[
+  \left.\left(\frac{\partial\phi}{\partial t} + \mathcal{H}\right)\right|_{t_f} = 0.
+\]
+Since $\phi=0$ and the system is autonomous, this reduces to $\mathcal{H}(t_f) = 0$. In our shooting code (\texttt{shooting.py}, lines~58--107), $t_f$ is an additional unknown in the shooting vector, and $\mathcal{H}_f = 0$ is an additional residual equation---a direct implementation of this transversality condition.
+
+
+% ======================================================================
+\section{3.\quad Sufficient Conditions (p.~152)}
+% ======================================================================
+
+The course also covers when the necessary conditions are actually sufficient. The Legendre--Clebsch condition requires:
+\[
+  \frac{\partial^2 \mathcal{H}}{\partial u^2} > 0
+  \qquad \forall\, t \in [t_0, t_f].
+\]
+For our minimum-energy formulation, $\mathcal{H} = \|u\|^2 + \lambda_v^\top u + \ldots$, so $\mathcal{H}_{uu} = 2I$, which is positive definite everywhere. This confirms that the extremals found by our shooting method are indeed local minima, not saddle points. This check is a direct application of the sufficient conditions from the lectures, and it gives us confidence that the solutions are meaningful.
+
+
+% ======================================================================
+\section{4.\quad The TPBVP and Shooting: Where the Course Meets Computation}
+% ======================================================================
+
+The Euler--Lagrange conditions convert our optimal control problem into a \emph{two-point boundary value problem} (TPBVP): the state $x$ is known at $t_0$, the costate $\lambda$ is determined at $t_f$ by transversality, and the two are coupled through the 12D state--costate ODE system. The lectures (pp.~147--148, 186--196) emphasize this structure and present MATLAB's \texttt{bvp4c} as the standard numerical tool.
+
+Our project implements the same idea as a \emph{shooting method}: guess the initial costates $\lambda(t_0)$, propagate the full system forward, measure the terminal miss, and use Newton iteration (\texttt{scipy.optimize.fsolve}) to drive the miss to zero. This is essentially what \texttt{bvp4c} does internally, and it is the approach the course demonstrates on the stirred-tank reactor example (pp.~186--196).
+
+We implement three shooting variants, one for each cost type:
+\begin{itemize}[leftmargin=1.5em]
+  \item \texttt{solve\_min\_energy}: 4 unknown costates, 4 terminal residuals (two-body) or 6+6 for CR3BP.
+  \item \texttt{solve\_min\_time}: costates + free $t_f$; one extra residual from $\mathcal{H}(t_f) = 0$.
+  \item \texttt{solve\_min\_fuel}: costates with homotopy continuation on the smoothing parameter $\rho$.
+\end{itemize}
+
+This is where the course material is at its most directly applicable. The shooting method \emph{is} the numerical tool the course teaches for optimal control problems.
+
+
+% ======================================================================
+\section{5.\quad Where We Extend Beyond the Course}
+% ======================================================================
+
+The indirect shooting method works beautifully on the textbook examples. On our problem, it runs into two difficulties that the course warns about but does not fully resolve: \emph{sensitivity to initial guesses} and \emph{discontinuous control profiles}. These difficulties motivated everything in this section---techniques that extend the course material rather than directly applying it.
+
+
+\subsection{5.1\quad The Initial Guess Problem}
+
+The lectures note (p.~196, summary) that ``a good initial guess is important to get an accurate solution, if a solution exists'' and that ``discontinuous points in the state/costate equations or control function could cause \texttt{bvp4c} to fail.'' In the stirred-tank example, one can guess $\lambda(t_0) \approx [0.5,\, 0.5]$ and the shooting converges. In the CR3BP, the costate space is 6-dimensional, the dynamics are chaotic, and the basin of convergence for the shooting method is vanishingly small. A random guess for $\lambda(t_0)$ almost never works.
+
+This is the central practical challenge of indirect methods, and it is the reason our project develops an alternative approach.
+
+
+\subsection{5.2\quad Direct Collocation: Discretize First, Optimize Second}
+
+The course teaches the \emph{indirect} pathway: derive the continuous necessary conditions (Euler--Lagrange), then discretize and solve the resulting TPBVP. Direct collocation reverses the order: discretize the original optimal control problem into a finite-dimensional nonlinear program (NLP), and let the NLP solver handle the optimality conditions internally.
+
+The theoretical license for this comes from the \emph{constrained optimization} material in the first part of the course (pp.~133--140). The augmented cost $J_a = J + \lambda^\top f(x,u)$ with Lagrange multipliers is exactly what an NLP solver constructs when it forms the KKT system. The KKT multipliers on the dynamics defect constraints are the discrete analogues of the costates $\lambda(t)$. So the same variational structure from the lectures is still present---it is just handled numerically rather than analytically.
+
+Our implementation parameterizes the state trajectory with B\'ezier curves (Bernstein polynomial basis) and enforces dynamics as equality constraints at Gauss--Legendre collocation points:
+\[
+  \text{NLP:}\qquad
+  \min_{P,\,u} \sum_k w_k\,\|u_k\|^2\,\Delta t
+  \qquad\text{s.t.}\quad
+  \dot{x}_{\text{B\'ez}}(\tau_k) = f\bigl(x(\tau_k),\, u_k\bigr),
+  \quad
+  x(t_0) = x_0,\;\; x(t_f) = x_f.
+\]
+The B\'ezier parameterization itself is not from the course---it is our contribution. But the problem it solves, the constraints it enforces, and the optimality conditions the solver satisfies are all grounded in the variational framework from the lectures.
+
+
+\subsection{5.3\quad Mesh Refinement: A Computational Strategy for Robustness}
+
+The dynamic programming principle from the course (pp.~197--206) teaches that an optimal sub-trajectory of an optimal trajectory is itself optimal. We exploit a computational analogue of this idea through \emph{mesh refinement}: solve a coarse version of the problem first (few segments, loose tolerance), then use that solution to warm-start a finer discretization. Each level inherits a good initial guess from the previous one, sidestepping the initial-guess sensitivity that plagues both shooting and direct methods on hard problems.
+
+The cascade proceeds as:
+\begin{center}
+\small
+20 segments $\;\xrightarrow{\text{warm-start}}\;$ 40 segments $\;\xrightarrow{\text{warm-start}}\;$ 60 segments
+\end{center}
+This is not taught in AAE~568, but it is a direct response to the problem the course identifies: that numerical TPBVP solvers need good starting points.
+
+
+\subsection{5.4\quad Homotopy Continuation for Minimum Fuel}
+
+The minimum-fuel problem has a bang-bang control structure: thrust is either at full magnitude or zero, determined by the switching function $S = \|\lambda_v\| - 1$. The discontinuity in $u(t)$ is exactly the kind of difficulty the course warns about. We address it with a smoothing technique:
+\[
+  T = \frac{u_{\max}}{2}\bigl(1 + \tanh(S/\rho)\bigr),
+\]
+where $\rho$ is a smoothing parameter. We start with $\rho = 1$ (nearly linear) and progressively reduce it through a schedule $\rho = 1 \to 0.5 \to 0.1 \to 0.05 \to 0.01 \to 0.001$, using the converged solution from each stage as the initial guess for the next. Each step makes the problem slightly harder but starts from a nearby solution, and in the limit the smooth approximation recovers the true bang-bang control.
+
+This homotopy continuation is not covered in the course, but the \emph{need} for it arises directly from the inequality-constrained optimal control theory taught in the lectures (pp.~161--166). The switching function, the bang-bang structure, and the complementarity conditions are all from the course; the smoothing and continuation are our engineering response to making them numerically tractable.
+
+
+\subsection{5.5\quad Bridging Indirect and Direct: Warm-Starting Across Methods}
+
+Perhaps the most satisfying connection in the project is using the direct collocation solution to warm-start the indirect shooting. The stationarity condition $u^* = -\frac{1}{2}\lambda_v$ gives us a bridge: once IPOPT finds an optimal control profile $u^*(t)$, we can estimate the initial costates as $\lambda_v(t_0) \approx -2\,u^*(t_0)$ and use that to seed the shooting method. This allows us to obtain the indirect solution (which is more analytically interpretable) even when a cold-start shooting would diverge.
+
+This technique is not from the course, but it depends entirely on the course material: without the stationarity condition from the Euler--Lagrange theory, we would have no way to translate between the direct and indirect worlds.
+
+
+% ======================================================================
+\section{6.\quad Summary}
+% ======================================================================
+
+The following table separates what comes directly from AAE~568 from what we built on top of it:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X c >{\raggedright\arraybackslash}p{5.5cm}}
+\toprule
+\textbf{Concept} & \textbf{Lecture Ref.} & \textbf{Role in Project} \\
+\midrule
+\multicolumn{3}{l}{\textit{\textbf{\color{darkblue}Directly from the course}}} \\[2pt]
+Bolza problem formulation          & pp.~141--142  & Problem setup (cost + dynamics + BCs) \\
+Hamiltonian \& augmented cost       & pp.~143--145  & Costate ODE derivation \\
+Euler--Lagrange equations            & pp.~146--147  & State--costate system in \texttt{dynamics.py} \\
+Stationarity $\partial\mathcal{H}/\partial u = 0$
+                                    & p.~147        & Control law $u^* = -\frac{1}{2}\lambda_v$ \\
+Free-time transversality $\mathcal{H}=0$
+                                    & pp.~150--152  & Extra residual in min-time shooting \\
+Pontryagin's Minimum Principle      & pp.~153--160  & Bang-bang thrust for bounded control \\
+Inequality constraints / switching fn.
+                                    & pp.~161--166  & Min-fuel switching $S = \|\lambda_v\|-1$ \\
+TPBVP and shooting method          & pp.~186--196  & Indirect solver via \texttt{fsolve} \\
+Quadratic performance index         & p.~142        & $\int\|u\|^2 dt$ objective \\
+Sufficient cond.\ (Legendre--Clebsch)
+                                    & p.~152        & $\mathcal{H}_{uu} = 2I > 0$ verified \\[6pt]
+\multicolumn{3}{l}{\textit{\textbf{\color{lightblue}Extensions beyond the course}}} \\[2pt]
+Direct collocation as NLP           & inspired by pp.~133--140
+                                                    & B\'ezier/IPOPT solver; KKT mult.\ as discrete costates \\
+Mesh refinement cascade             & motivated by p.~196
+                                                    & Coarse-to-fine warm-starting for robustness \\
+Homotopy continuation               & motivated by pp.~161--166
+                                                    & $\tanh$ smoothing with $\rho$-schedule for min-fuel \\
+Indirect--direct bridging           & uses $\partial\mathcal{H}/\partial u = 0$
+                                                    & Estimate $\lambda(t_0)$ from IPOPT's $u^*$ \\
+CR3BP dynamics \& gravity Hessian    & ---           & 6D nonlinear dynamics with two singularities \\
+CasADi automatic differentiation    & ---           & Exact sparse Jacobians for NLP \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+
+% ======================================================================
+\section{7.\quad Conclusion}
+% ======================================================================
+
+This project is, at its foundation, an exercise in AAE~568. The Bolza formulation tells us how to pose the problem. The Hamiltonian and Euler--Lagrange equations give us the necessary conditions. Pontryagin's Principle handles the bounded-thrust case. The shooting method solves the resulting TPBVP. Every one of these steps is a direct application of course material, carried out on equations we wrote by following the derivations in the lecture notes.
+
+Where the project goes beyond the course is in the \emph{engineering} required to make these ideas work on a problem that is harder than the classroom examples: a direct collocation method that sidesteps the initial-guess sensitivity of shooting, a mesh refinement strategy that builds solutions incrementally, and a homotopy scheme that smooths away the discontinuities in bang-bang control. But these extensions are not independent inventions---they are responses to specific limitations that the course itself identifies, built on top of the theoretical tools the course provides. The indirect and direct methods in our code are two sides of the same coin, and that coin was minted in AAE~568.
+
+\end{document}
