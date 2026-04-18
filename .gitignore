@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# LaTeX build artifacts (keep .tex and .pdf; ignore intermediates)
+*.aux
+*.fls
+*.fdb_latexmk
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.bbl
+*.blg
+*.nav
+*.snm
+*.vrb
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Scratch / ephemeral
+_scratch_*.py
+_probe_*.py
+/tmp/
+*.tmp
