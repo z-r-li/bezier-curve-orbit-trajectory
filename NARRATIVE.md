@@ -18,7 +18,7 @@
 ### 2.2 Solvers and tools
 - **Indirect:** `scipy.optimize.fsolve` on TPBVP in initial costates.
 - **Direct (P0–1):** SciPy SLSQP driving global and segmented Bézier.
-- **Direct (P1–2):** CasADi + IPOPT, analytic derivatives via AD. P1 uses Bézier collocation; P2 uses RK4 multiple-shooting (see §6.3 for why).
+- **Direct (P1–2):** CasADi + IPOPT, analytic derivatives via AD. P1 uses Bézier collocation; P2 uses RK4 multiple-shooting (see §6.4 for why).
 - **Mesh refinement cascade (P1 only):** coarse → medium → fine, warm-started between stages, on the P1 Bézier collocation. P2 uses a single-level solve warm-started from the NASA OEM; the cascade is not transferred (see `Artemis2/RETUNING_AUDIT.md` §Mesh refinement).
 - **Warm-starting IPOPT:** runs are warm-started from a converged shooting trajectory (P1) or the NASA OEM (P2). Cold-start from a linear state interpolation was observed to land in a non-PMP basin on the CR3BP ($J=0.0878$ vs $J^*=0.04306$); warm-starting is made explicit here rather than hidden as an implementation detail.
 
@@ -42,7 +42,7 @@
 
 ### Phase 2 — Artemis II ephemeris validation (`Artemis2/`)
 - **Purpose.** Show the P1 IPOPT approach transfers to mission-relevant 3D N-body dynamics.
-- **Setup.** 3D Earth-Moon-Sun N-body via astropy's builtin analytic ephemeris (not JPL DE; see §6.5); truth is NASA post-flight OEM for Artemis II (flown **April 2–10, 2026**).
+- **Setup.** 3D Earth-Moon-Sun N-body via astropy's builtin analytic ephemeris (not JPL DE; see §6.6); truth is NASA post-flight OEM for Artemis II (flown **April 2–10, 2026**).
 - IPOPT multi-shooting converges rapidly (2 iter / 0.81 s on the post-TLI arc, 4 iter / 1.68 s on full mission) — these iteration counts reflect the quality of the NASA-OEM warm start (IPOPT polishes a near-feasible trajectory rather than searching from scratch), not a generic IPOPT speed claim. The same solver class (MUMPS linear solver, exact AD derivatives, warm-start-from-reference philosophy) carries over from P1; tolerances, mesh schedule, and transcription form (RK4 multi-shooting rather than Bézier collocation) are problem-specific and documented in `Artemis2/RETUNING_AUDIT.md`. The pedagogical point is preserved: interior-point NLP with AD is the right tool class for both regimes.
 - Deliverables: trajectory, control history, convergence history vs. OEM.
 - Shooting baseline included; 15-seed sweep exposes its initial-guess fragility against IPOPT's robustness.
@@ -96,47 +96,127 @@ All entries below are loaded from the authoritative `results_summary.json` and m
 
 ## 6. Control methodology and theory
 
-### 6.1 Problem class
-A Bolza optimal-control problem with fixed endpoints and fixed terminal time:
+This section works the methodology bottom-up: first the Bolza problem class (6.1), then the indirect branch (PMP + shooting, 6.2), then the Bernstein/Bézier algebra the direct branch rests on (6.3), then the direct transcription itself (defects, quadrature, NLP structure, 6.4), then solvers (6.5), dynamics (6.6), and the pedagogical rationale for the three-phase ladder (6.7). Every equation in 6.1–6.2 is a direct import from AAE 568 lecture notes (page numbers inline); 6.3–6.4 go beyond the lectures — the notes cover optimal control entirely via the indirect/PMP path and contain no slides on collocation, Bernstein basis, or direct transcription — so those subsections lean on the project's own `AAE568_Technical_Documentation.docx` and standard references (Betts 2010; Farouki's Bernstein survey).
+
+### 6.1 Problem class (Bolza form, lecture notes p. 141)
+The course defines the general optimal control problem in **Bolza** form:
+
+$$\min_{u(\cdot)}\; J = \phi\bigl(x(t_f),t_f\bigr) + \int_{t_0}^{t_f} \mathcal{L}(x,u,t)\,dt, \qquad \dot x = f(x,u,t), \qquad x(t_0)=x_0.$$
+
+"Mayer" and "Lagrange" are the special cases $\mathcal{L}\equiv 0$ and $\phi\equiv 0$ respectively; Bolza carries both terms. This project instantiates the Lagrange form with a fixed-endpoint, fixed-$t_f$ boundary setup:
 
 $$\min_{u(\cdot)}\; J = \int_{t_0}^{t_f} u^{\top} R\, u \,dt, \qquad \dot x = f(x,t) + B(x,t)\,u, \qquad x(t_0)=x_0,\;x(t_f)=x_f.$$
 
-For this project $R = I$ and $B = \begin{bmatrix}0\\I_3\end{bmatrix}$ — thrust enters additively through the velocity channel, so the objective reduces to $J = \int |u|^2\,dt$ (the convention used throughout `results_summary.json`, with no $\tfrac12$ prefactor). The minimum-energy objective $\|u\|_2^2$ is used in place of a more physically faithful $\|u\|_1$ (propellant mass) because the $L^2$ cost gives smooth PMP optimality conditions and a well-conditioned NLP — classic trade, called out in AAE 568 notes before the first example.
+For this project $R = I$ and $B = \begin{bmatrix}0\\I_{n/2}\end{bmatrix}$ (thrust enters additively through the velocity channel, $n=4$ in planar P1, $n=6$ in 3D P2), so the objective reduces to $J = \int |u|^2\,dt$ — the convention used throughout `results_summary.json`, with no $\tfrac12$ prefactor. The minimum-energy objective $\|u\|_2^2$ is used in place of the physically faithful $\|u\|_1$ (propellant-mass proxy) because the $L^2$ cost gives smooth PMP optimality conditions ($H_{uu}=2R\succ 0$, §6.2) and a well-conditioned NLP — classic trade, called out in AAE 568 notes before the first worked example. Minimum-time and minimum-fuel variants (discussed in `AAE568_Controls_Aspects.tex` §2.1) are scoped out of the locked narrative in favor of a single cost functional across P0–P2.
 
-### 6.2 Indirect branch — PMP + shooting
-The **augmented cost** adds costates $\lambda(t)$ enforcing the dynamics:
+### 6.2 Indirect branch — PMP + shooting (lecture notes pp. 144–194)
 
-$$J_a = \int_{t_0}^{t_f}\!\left[u^{\top}Ru + \lambda^{\top}(f + Bu - \dot x)\right]dt.$$
+**Step 1 — augmented cost and the Hamiltonian (pp. 144–145).** Adjoin the dynamics constraint with a costate $\lambda(t)\in\mathbb{R}^n$:
 
-Define the **Hamiltonian** $H(x,\lambda,u,t) = u^{\top}Ru + \lambda^{\top}(f + Bu)$. Pontryagin's **Minimum Principle** gives four pieces:
+$$J_a = \phi(x(t_f),t_f) + \int_{t_0}^{t_f}\!\left[\mathcal{L}(x,u,t) + \lambda^{\top}\bigl(f(x,u,t)-\dot x\bigr)\right]dt.$$
 
-1. State eqn: $\dot x = \partial H/\partial\lambda = f + Bu$.
-2. Costate eqn: $\dot\lambda = -\partial H/\partial x$. For CR3BP the Jacobian $\partial f/\partial x$ is the variational system of the rotating-frame EOMs — a closed-form $6\times 6$ matrix.
-3. Stationarity: $\partial H/\partial u = 2Ru + B^{\top}\lambda = 0 \;\Rightarrow\; u^{*} = -\tfrac12 R^{-1}B^{\top}\lambda = -\tfrac12\lambda_v$ (with $R=I$, $B$ picking off velocity).
-4. Transversality/boundary: fixed $x_0,x_f \Rightarrow$ no natural boundary condition on $\lambda$; the unknowns are $\lambda(t_0)\in\mathbb{R}^{n_x}$ (dim 4 in planar P1, dim 6 in 3D P2), solved by shooting.
+Define the **Hamiltonian** $H(x,u,\lambda,t) := \mathcal{L}(x,u,t) + \lambda^{\top} f(x,u,t)$. Integration by parts moves the $\lambda^{\top}\dot x$ term onto $\dot\lambda$, yielding
 
-The resulting **TPBVP** is: guess $\lambda(t_0)$, integrate $[x;\lambda]$ forward with $u^{*} = -\tfrac12 \lambda_v$ substituted into $\dot x$, read off $x(t_f)$, iterate on $\lambda(t_0)$ until $x(t_f)=x_f$. `scipy.optimize.fsolve` (MINPACK `hybrd`) drives the residual to machine precision on the 4-dim planar problem and the 6-dim 3D problem.
+$$J_a = \phi(x(t_f),t_f) + \bigl[\lambda^{\top}(t_0) x(t_0) - \lambda^{\top}(t_f) x(t_f)\bigr] + \int_{t_0}^{t_f}\bigl[H + \dot\lambda^{\top} x\bigr]dt.$$
 
-Failure mode of shooting — and the reason P2 needs a multi-start sweep — is *sensitivity amplification* in the shooting map $\lambda(t_0)\mapsto x(t_f)$: the state-transition matrix $\Phi(t_f,t_0)$ for CR3BP and cislunar N-body dynamics has eigenvalues that grow exponentially in hyperbolic regions, which ill-conditions `fsolve`'s Jacobian and shrinks the usable basin of $\lambda(t_0)$ with arc length. This is the textbook failure mode of single shooting on cislunar arcs and is the original motivation for direct transcription.
+For our Lagrange form ($\phi=0$) and quadratic running cost, $H = u^{\top}Ru + \lambda^{\top}(f + Bu)$.
 
-### 6.3 Direct branch — collocation + NLP
-Discretize the state (and optionally control) as polynomials on sub-intervals; enforce the ODE at collocation points as *defect* equality constraints; solve the resulting finite-dimensional NLP. Three concrete flavors are compared in this project:
+**Step 2 — Euler–Lagrange necessary conditions (p. 147, boxed in lecture).**
 
-- **Bézier collocation + IPOPT (N=16 segments, degree 7).** State and control are Bernstein polynomials of degree $d$ on each of $N$ sub-intervals; Gauss–Legendre nodes of order $n_c$ inside each segment generate defect constraints that enforce both dynamics and inter-segment continuity. Solved by CasADi + IPOPT with exact AD derivatives. The JSON method label `global_bezier_ipopt` is a legacy name for this segmented setup — the word "global" describes the NLP (one monolithic sparse solve) rather than a single-polynomial transcription.
-- **Segmented Bézier ($N$-sweep).** Partition into $N$ sub-intervals; one degree-$d$ Bernstein polynomial per segment; enforce $C^0$ state continuity at interior knots via shared control points; repeat the Gauss–Legendre defect pattern inside each segment. This is the CFD **h-refinement** analogue — fix polynomial order, subdivide the mesh, watch cost and defect converge. The N-sweep is the mesh-convergence study (`nsweep_findings.md`).
-- **RK4 multiple-shooting (Phase 2 only).** Replace the Bézier state with an explicit RK4 step from segment-start to segment-end, with piecewise-constant control per segment as the NLP variable. Defect constraints become $x_{k+1}^{\mathrm{NLP}} = \text{RK4}(x_k^{\mathrm{NLP}}, u_k, \Delta t)$. Preferred in P2 because `astropy`'s ephemeris lookups are non-symbolic Python calls; embedding them inside CasADi's implicit collocation stencil would require either pre-tabulating Sun/Moon states as NLP parameters or wrapping the lookups in CasADi External Functions (which fall back to finite-difference Jacobian blocks and lose end-to-end AD). Explicit RK4 with ephemeris states sampled once per segment and passed in as segment parameters sidesteps both paths — a concrete implementation detail worth a sentence in the methods section.
+$$\boxed{\quad\text{(a)}\;\dot\lambda = -\Bigl(\frac{\partial H}{\partial x}\Bigr)^{\!\top},\qquad \text{(b)}\;\lambda(t_f) = \Bigl(\frac{\partial\phi}{\partial x}\Bigr)^{\!\top}\bigg|_{t_f},\qquad \text{(c)}\;\frac{\partial H}{\partial u} = 0\quad}$$
 
-### 6.4 NLP solvers
-- **SLSQP** (sequential least-squares QP) on segmented Bézier (P1): finite-difference gradients, dense Jacobian, tens to a few hundred SLSQP iterations per solve (max observed: 294 at N=16). Scales as roughly $O(N^2 \cdot \text{iter})$ in wall time. Analytically, this is the direct descendant of Kuhn–Tucker static optimization covered in lecture (the "augmented cost" slide set used for the PMP derivation is the same machinery, applied at a finite-dimensional NLP rather than an infinite-dimensional problem).
+For our setup:
+
+- (a) **Costate ODE.** $\dot\lambda = -(\partial f/\partial x)^{\top}\lambda$ (since $\partial\mathcal{L}/\partial x = 0$ when the running cost is control-only). In the planar CR3BP the Jacobian $\partial f/\partial x$ is the variational system of the rotating-frame EOMs — a closed-form $6\times 6$ matrix whose velocity block is the $\pm 2$ Coriolis couple and whose position block is the $3\times 3$ Hessian $U_{xx}$ of the pseudo-potential.
+- (b) **Transversality.** $\phi\equiv 0$ and $x(t_f)=x_f$ is fixed, so $\delta x(t_f)=0$ and no natural boundary on $\lambda$ is imposed — the unknowns are $\lambda(t_0)\in\mathbb{R}^n$, and shooting solves for them.
+- (c) **Stationarity.** $\partial H/\partial u = 2Ru + B^{\top}\lambda = 0 \;\Rightarrow\; u^{*} = -\tfrac12 R^{-1}B^{\top}\lambda = -\tfrac12\lambda_v$ (with $R=I$, $B$ picking off the velocity channel). This is the same feedback structure that LQR produces for a quadratic cost (linear in $\lambda$) even though our dynamics are fully nonlinear.
+
+**Step 3 — Legendre–Clebsch sufficient condition (pp. 152–153).** Check $H_{uu}(x^*,u^*,\lambda^*,t) = 2R \succ 0$ for all $t\in[t_0,t_f]$. Since $R=I$, $H_{uu}=2I$ everywhere, so the extremals are strict local minima (not saddles) — a one-line sanity check worth stating once, after which the ambiguity between minimum and maximum principle conventions is resolved for the whole project.
+
+**Step 4 — Pontryagin Minimum Principle (pp. 154–157).** When the control is bounded, stationarity is replaced by the pointwise minimum condition
+
+$$H(x^*,u^*,\lambda^*,t) \le H(x^*,u,\lambda^*,t) \qquad \forall u\in U.$$
+
+For our unconstrained-thrust minimum-energy runs, PMP reduces to the stationarity form of step 2(c) and $u^* = -\tfrac12\lambda_v$ is the global minimizer. The bang-bang minimum-time law $u^* = -u_{\max}\lambda_v/\|\lambda_v\|$ (pp. 164–166 worked example) is available but not used in the locked narrative.
+
+**Step 5 — TPBVP assembly (pp. 148–149, 186–194 stirred-tank example).** Substituting $u^*$ into $\dot x = f + Bu^*$ yields a coupled state–costate ODE of dimension $2n$ with split boundary data: $x(t_0)=x_0$ known, $x(t_f)=x_f$ required at the far end. **Shooting** collapses this into a root-finding problem in $\lambda(t_0)$: guess $\lambda(t_0)$, integrate $[x;\lambda]$ forward with $u^*$ substituted, read off $x(t_f)$, Newton-iterate on $\lambda(t_0)$ until $x(t_f)=x_f$. We drive the residual with `scipy.optimize.fsolve` (MINPACK `hybrd`); on planar P1 the shooting vector is $\lambda(t_0)\in\mathbb{R}^4$, and on 3D P2 it is $\mathbb{R}^6$.
+
+The lectures (p. 196 summary) flag two failure modes: (i) sensitivity of the shooting map $\lambda(t_0)\mapsto x(t_f)$, whose Jacobian is the state-transition matrix $\Phi(t_f,t_0)$ and grows exponentially in hyperbolic CR3BP / cislunar regions — ill-conditioning `fsolve`'s Jacobian and shrinking the basin of convergence with arc length; and (ii) discontinuities in $u(t)$ (e.g. bang-bang) that break smoothness assumptions in `bvp4c`-class solvers. Both show up on P2 exactly as the lectures warn; the 15-seed sweep of §5.3 is the empirical characterization of failure mode (i).
+
+### 6.3 Bézier curves and Bernstein polynomial math
+
+The direct branch parameterizes the state trajectory on each segment as a **Bézier curve** in Bernstein basis. This subsection collects the algebra used by the collocation pipeline. It is not in the lecture notes — the notes cover optimal control via PMP/shooting only — so terminology and conventions follow `AAE568_Technical_Documentation.docx` §4.3 and standard references (Farouki 2012 Bernstein survey; Betts 2010 Ch. 4 for collocation).
+
+**Bernstein basis.** For polynomial degree $d$ and parameter $\tau\in[0,1]$, the $d+1$ **Bernstein basis polynomials** are
+
+$$B_i^d(\tau) = \binom{d}{i}\tau^i(1-\tau)^{d-i}, \qquad i=0,1,\dots,d.$$
+
+They form a partition of unity ($\sum_i B_i^d(\tau) = 1$), are nonnegative on $[0,1]$, and are linearly independent on every sub-interval of positive length.
+
+**Bézier curve on a segment.** Given $d+1$ vector-valued **control points** $\{P_i\}_{i=0}^{d}\subset\mathbb{R}^n$, the Bézier curve is
+
+$$x_{\text{Bez}}(\tau) = \sum_{i=0}^{d} P_i\,B_i^d(\tau), \qquad \tau\in[0,1].$$
+
+Three properties make this basis suitable for collocation:
+
+1. **Endpoint interpolation.** $x_{\text{Bez}}(0) = P_0$ and $x_{\text{Bez}}(1) = P_d$. Segment-boundary states are exactly the first and last control points — no interior-node interpolation is needed to read off the endpoints, which simplifies boundary-condition enforcement and inter-segment $C^0$ matching (see "composite curve" below).
+2. **Convex-hull property.** Because the basis is a partition of unity of nonnegative functions, $x_{\text{Bez}}(\tau)$ lies in the convex hull of $\{P_i\}$ for all $\tau\in[0,1]$. Tight geometric control over the curve's reach helps the warm-start heuristic stay physically sensible during IPOPT's first iterations and bounds the search neighborhood around the warm-start trajectory.
+3. **Smooth analytical derivatives (hodograph).** The derivative of a degree-$d$ Bézier is itself a Bézier curve of degree $d-1$, with control points
+   
+   $$Q_i = d\,(P_{i+1} - P_i), \qquad i=0,\dots,d-1.$$
+   
+   So $\dot x_{\text{Bez}}(\tau) = \sum_{i=0}^{d-1} Q_i\,B_i^{d-1}(\tau)$. Applied twice, the second derivative drops to degree $d-2$ with control points $d(d-1)(P_{i+2}-2P_{i+1}+P_i)$. This closed-form hodograph is the reason defects can be evaluated analytically at any $\tau$ — no numerical differentiation inside the NLP.
+
+**Composite (piecewise) Bézier.** Partition $[t_0,t_f]$ into $N$ segments $[t_k, t_{k+1}]$ with local parameter $\tau_k = (t-t_k)/\Delta t_k$. On each segment, one degree-$d$ Bézier gives $N(d+1)$ total control points if segments are unlinked. **$C^0$ continuity at interior knots** is enforced structurally by sharing the last control point of segment $k$ with the first control point of segment $k{+}1$ (i.e., identifying $P_d^{(k)} \equiv P_0^{(k+1)}$), reducing the unshared control-point count to $N(d+1) - (N-1) = Nd + 1$. $C^1$ continuity additionally would require matching hodograph endpoints $d(P_d^{(k)}-P_{d-1}^{(k)})/\Delta t_k = d(P_1^{(k+1)}-P_0^{(k+1)})/\Delta t_{k+1}$; the current implementation does not enforce this explicitly and relies on the NLP to find smooth solutions through the objective and defect structure (a deliberate simplification, documented in the Technical Doc §4.3.2).
+
+**Evaluation.** `bezier.py` exposes `bezier_eval(cp, tau)` (direct basis sum), `bezier_derivative(cp, tau)` (via the hodograph formula), and `composite_bezier_eval(cps, breakpoints, t)` (locate the segment containing $t$, rescale, dispatch). De Casteljau-style recursive evaluation is available numerically but not used in the collocation loop, where the explicit basis-sum form is preferred so CasADi can symbolically differentiate through it.
+
+### 6.4 Direct branch — collocation transcription and NLP structure
+
+With the Bernstein algebra of §6.3 in hand, the direct transcription is mechanical. Discretize the state as a composite Bézier, keep the control as an explicit NLP decision variable at each collocation node, and enforce the dynamics as equality ("**defect**") constraints at those nodes.
+
+**Defect constraint.** At each collocation point $\tau_k$ inside segment $s$ with duration $\Delta t_s$:
+
+$$\boxed{\quad \text{def}_k \;:=\; \frac{1}{\Delta t_s}\frac{d x_{\text{Bez}}^{(s)}}{d\tau}\bigg|_{\tau_k} \;-\; f\bigl(x_{\text{Bez}}^{(s)}(\tau_k),\,u_k,\,t_k\bigr) \;=\; 0.\quad}$$
+
+The left factor is the hodograph evaluated at $\tau_k$; the right is the dynamics at the Bézier-sampled state and the NLP control. The NLP makes the residual zero, so the Bézier curve's tangent matches the ODE at every collocation node. Between nodes the curve is interpolated by the polynomial, with accuracy governed by the standard collocation error bound $O(\Delta t^{2n_c})$ for Gauss–Legendre nodes of order $n_c$.
+
+**Collocation nodes.** Gauss–Legendre nodes $\{\tau_k\}$ on $[0,1]$ give maximum-degree algebraic exactness for the quadrature used in the cost (see "objective" below), and the corresponding defect placement has well-studied superconvergence properties. The P1 collocation run uses $N=16$ segments and degree $d=7$ with 4 collocation nodes per segment; the N-sweep probes $N\in\{1,2,4,8,16\}$ at fixed degree.
+
+**Objective as quadrature.** The running cost is approximated by Gauss–Legendre quadrature at the same nodes used for defects, with weights $\{w_k\}$:
+
+$$J \;\approx\; \sum_{s=1}^{N}\sum_{k=1}^{n_c} w_k\,\|u_k^{(s)}\|^2\,\Delta t_s.$$
+
+This is an $O(\Delta t^{2 n_c})$-accurate quadrature on smooth integrands and is consistent with the defect-constraint discretization order.
+
+**NLP decision variables and constraint counts.** For a planar ($n=4$) P1 run with $N$ segments, degree $d$, $n_c$ collocation nodes per segment, and control dimension $m=2$:
+
+- **State control points:** $N d + 1$ unique vectors in $\mathbb{R}^n$ after $C^0$-sharing at interior knots $\Rightarrow (Nd+1)\cdot n$ scalars. With fixed endpoints $x(t_0)=x_0$ and $x(t_f)=x_f$, the two boundary control points $P_0^{(1)}$ and $P_d^{(N)}$ are pinned, leaving $(Nd-1)\cdot n$ free state variables.
+- **Controls:** $N\cdot n_c\cdot m$ scalars (piecewise constants at collocation nodes; no continuity enforced).
+- **Defect equalities:** $N\cdot n_c\cdot n$ scalars. The full Earth–Mars reference ($N=8, d=7, n_c=12, n=4, m=2$) gives $\sim 420$ decision variables and $\sim 384$ equality constraints — consistent with the numbers reported in `AAE568_Technical_Documentation.docx` §4.3.2.
+- **Boundary equalities:** $2n$ scalars (fixed endpoints).
+
+**Parameterization lesson learned.** An earlier version parameterized only position $r(t)$ and back-solved control from $u=\ddot r - f_{\text{grav}}(r)$. Any smooth curve connecting the endpoints was "feasible" because the dynamics were satisfied by construction rather than enforced — so the NLP drove to trivially small costs by choosing unphysical curves. The fix (recorded in Tech Doc §6.1) is to parameterize the **full** state $[r,v]$ with Bézier control points, declare $u$ an explicit NLP variable, and enforce $\dot x = f(x,u)$ as hard defect constraints. This is the setup documented in §6.4 and used across P0–P1.
+
+**Three concrete transcription flavors in this project.**
+
+- **Bézier collocation + IPOPT (P1, $N=16$, degree 7, $n_c$ Gauss–Legendre nodes).** Solved by CasADi + IPOPT with exact AD derivatives. The JSON method label `global_bezier_ipopt` is a legacy name for this segmented setup — "global" describes the NLP (one monolithic sparse solve) rather than a single-polynomial transcription.
+- **Segmented Bézier + SLSQP ($N$-sweep, P1).** Same transcription, but SLSQP driver with finite-difference gradients; the CFD **h-refinement** analogue (fix polynomial order, subdivide the mesh, watch cost and defect converge). The N-sweep is the mesh-convergence study (`nsweep_findings.md`).
+- **RK4 multiple-shooting (P2 only).** Replace the Bézier state with an explicit RK4 step from segment-start to segment-end, with piecewise-constant control per segment as the NLP variable. Defect constraints become $x_{k+1}^{\mathrm{NLP}} = \text{RK4}(x_k^{\mathrm{NLP}}, u_k, \Delta t)$. Preferred in P2 because `astropy`'s ephemeris lookups are non-symbolic Python calls; embedding them inside CasADi's implicit collocation stencil would require either pre-tabulating Sun/Moon states as NLP parameters or wrapping the lookups in CasADi External Functions (which fall back to finite-difference Jacobian blocks and lose end-to-end AD). Explicit RK4 with ephemeris states sampled once per segment and passed in as segment parameters sidesteps both paths.
+
+**Connection back to the course.** Although the Bernstein basis and collocation machinery are not in the lecture notes, their optimality structure is: at any IPOPT iterate satisfying first-order KKT, the Lagrange multipliers on the defect constraints $\text{def}_k=0$ are (up to sign and scaling) the **discrete costates** $\lambda(\tau_k)$ of the continuous PMP formulation in §6.2. The KKT stationarity on control decision variables reproduces $\partial H/\partial u = 0$ at the collocation nodes. So the direct branch is not a departure from PMP — it is PMP solved implicitly inside an NLP instead of explicitly via shooting, and the numerical agreement across methods observed in §5.1–§5.2 is precisely this equivalence in action.
+
+### 6.5 NLP solvers
+- **SLSQP** (sequential least-squares QP) on segmented Bézier (P1): finite-difference gradients, dense Jacobian, tens to a few hundred SLSQP iterations per solve (max observed: 294 at $N=16$). Scales as roughly $O(N^2 \cdot \text{iter})$ in wall time. Analytically, this is the direct descendant of Kuhn–Tucker static optimization covered in lecture (pp. 123–138) — the "augmented cost" slide set used for the PMP derivation is the same machinery, applied at a finite-dimensional NLP rather than an infinite-dimensional problem.
 - **IPOPT** (interior-point) with MUMPS sparse linear solve and **CasADi automatic differentiation** (exact Jacobian and Hessian): 2–5 outer iterations on the same problems. This is the workhorse of modern direct-transcription optimal control (PSOPT, rockit, CasADi/Opti, etc.; the GPOPS-II family is a sibling that pairs Radau pseudospectral collocation with SNOPT rather than IPOPT), and the project treats "IPOPT + AD" as the tool of record.
-- **Warm-start philosophy.** Cold-start IPOPT from a linear state-interpolation guess lands the CR3BP solve in a non-PMP basin ($J=0.0878$ instead of $0.0432$). Warm-starting from a converged shooting solution (P1) or from the NASA OEM (P2) is essential and is made explicit in the methodology rather than hidden.
+- **Warm-start philosophy.** Cold-start IPOPT from a linear state-interpolation guess lands the CR3BP solve in a non-PMP basin ($J=0.0878$ instead of $0.0432$). Warm-starting from a converged shooting solution (P1) or from the NASA OEM (P2) is essential and is made explicit in the methodology rather than hidden. The bridge between branches is quantitative: if $\{u_k^*\}$ is the IPOPT-optimal control at collocation nodes, then $\lambda_v(t_0)\approx -2\,u_0^*$ seeds a subsequent shooting solve that would otherwise diverge from a random guess — a clean demonstration of the §6.4 "multipliers-as-costates" equivalence used for practical robustness.
 
-### 6.5 Dynamics
+### 6.6 Dynamics
 - **P0.** Two-body Keplerian: $\ddot r = -\mu r/\|r\|^3 + u$.
 - **P1.** Planar CR3BP in the Earth–Moon rotating frame: $\mu = 0.01215058561$; Lyapunov targets built with Ax=0.02 at L1 and L2. Boundary states are periodic-orbit samples.
 - **P2.** Dimensional N-body with `astropy`'s builtin ephemeris: Earth + Moon + Sun point-mass gravity on the Orion state, propagated in Earth-centered inertial. The builtin is a low-precision analytical approximation from the *Explanatory Supplement to the Astronomical Almanac* — it is *not* JPL DE405 or DE432s, despite the label `ephem: astropy_builtin_DE405` that appears in `results_summary.json` (the label inherits an imprecise comment in the loader and should be read as "astropy builtin"). For a 10-day cislunar arc the accuracy is adequate; for pointing-grade work a JPL SPK kernel should be loaded explicitly via `solar_system_ephemeris.set('de432s')`. Truth is the NASA OEM for Artemis II, flown 2026-04-02 through 2026-04-10 UTC, extracted from `Artemis_II_OEM_2026_04_10_Post-ICPS-Sep-to-EI.asc`.
 
-### 6.6 Why this specific ladder of three problems
+### 6.7 Why this specific ladder of three problems
 The sequence P0 → P1 → P2 isolates three distinct failure modes of direct transcription so the report can attribute each observation to a single cause:
 
 - P0 isolates *code correctness* (linear-ish dynamics, known analytic answer).
@@ -177,7 +257,7 @@ These are the things that will bite if forgotten — a checklist for whoever wri
 
 ### 8.1 Framing decisions
 - **Lead with the method comparison, not the mission.** The course is optimal control, not astrodynamics. The Artemis II phase is validation of the method, not a re-design of Artemis II. Open on "indirect vs direct transcription, and when does each fail?" and let the three phases illustrate it.
-- **Keep the three-phase arc intact.** P0 → P1 → P2 is the pedagogical spine; reordering (e.g., leading with Artemis) sacrifices the "ladder of isolated failure modes" argument from §6.6.
+- **Keep the three-phase arc intact.** P0 → P1 → P2 is the pedagogical spine; reordering (e.g., leading with Artemis) sacrifices the "ladder of isolated failure modes" argument from §6.7.
 - **Scope bar is pedagogical, not publication.** No need for Lawden's necessary conditions, primer vector theory, or free-$t_f$ transversality. Cite them as future work if asked; do not implement. (See `feedback_aae568_scope.md`.)
 
 ### 8.2 Claims already addressed in this file
