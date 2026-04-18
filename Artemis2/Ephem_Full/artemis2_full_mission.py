@@ -222,7 +222,7 @@ def propagate_ballistic(r0, v0, t_span_sec, ephem_cache, n_eval=3000):
 # IPOPT DIRECT MULTIPLE-SHOOTING
 # ============================================================================
 def solve_ipopt(r0, v0, rf_target, vf_target, t_span_sec, ephem_cache,
-                n_seg=120, nasa_data=None, burns=None):
+                n_seg=120, nasa_data=None, burns=None, stats_out=None):
     if not HAS_CASADI:
         print("\n  CasADi not available")
         return None
@@ -417,6 +417,34 @@ def solve_ipopt(r0, v0, rf_target, vf_target, t_span_sec, ephem_cache,
     }
     opti.solver('ipopt', opts)
 
+    def _capture_stats(solve_ok, err_msg=None):
+        if stats_out is None:
+            return
+        try:
+            s = opti.stats()
+        except Exception:
+            s = {}
+        stats_out["raw_stats"] = s
+        stats_out["return_status"] = s.get("return_status")
+        stats_out["iter_count"] = s.get("iter_count")
+        stats_out["t_wall_total"] = s.get("t_wall_total")
+        stats_out["success"] = bool(solve_ok)
+        stats_out["error_message"] = err_msg
+        conv = []
+        it_log = s.get("iterations") or {}
+        if isinstance(it_log, dict) and it_log.get("obj"):
+            obj_hist = it_log.get("obj") or []
+            pr_hist = it_log.get("inf_pr") or []
+            du_hist = it_log.get("inf_du") or []
+            for k in range(len(obj_hist)):
+                conv.append({
+                    "iter": int(k),
+                    "obj": float(obj_hist[k]),
+                    "constr_viol": float(pr_hist[k]) if k < len(pr_hist) else None,
+                    "dual_inf": float(du_hist[k]) if k < len(du_hist) else None,
+                })
+        stats_out["convergence_history"] = conv
+
     try:
         sol = opti.solve()
         X_sol = sol.value(X)
@@ -429,9 +457,11 @@ def solve_ipopt(r0, v0, rf_target, vf_target, t_span_sec, ephem_cache,
         print(f"    Max |u|: {u_mag.max():.6e} km/s²")
         print(f"    Coast max |u|: {u_mag[u_mag < 1e-3].max():.6e} km/s² (non-burn segments)")
 
+        _capture_stats(solve_ok=True)
         return X_sol, U_sol, seg_times, J_val
     except RuntimeError as e:
         print(f"    IPOPT failed: {e}")
+        _capture_stats(solve_ok=False, err_msg=str(e))
         return None
 
 

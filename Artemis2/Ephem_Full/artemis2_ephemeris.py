@@ -322,10 +322,29 @@ def shooting_residual(lam0, r0, v0, rf_target, vf_target, t_span_sec, ephem_cach
     return res
 
 
-def solve_shooting(r0, v0, rf_target, vf_target, t_span_sec, ephem_cache, n_guesses=15):
+def solve_shooting(r0, v0, rf_target, vf_target, t_span_sec, ephem_cache, n_guesses=15,
+                   seed_records=None, early_stop=True, on_seed_done=None):
     """
     Solve TPBVP via indirect shooting with multiple initial guesses.
+
+    Parameters
+    ----------
+    seed_records : list or None
+        If a list is passed, each seed's per-guess outcome is appended as a
+        dict with keys {seed_index, seed_strategy, lam0_guess, lam0_sol,
+        residual, nfev, wall_time_s, converged, exception, cost}. Used by the
+        T3.2 instrumentation to write one ResultRecord per seed.
+    early_stop : bool
+        If True (default), breaks after first guess with residual < 1e-4.
+        Set to False to run ALL 15 seeds to completion (needed for the
+        "shooting fragility" sweep so every seed gets a record).
+    on_seed_done : callable or None
+        If set, called as `on_seed_done(entry)` immediately after each seed
+        completes (before the next one starts). Used by the instrumented
+        runner to persist per-seed records so a timeout mid-sweep still
+        retains what's done.
     """
+    import time as _time
     print("\n" + "-" * 60)
     print("Indirect shooting (minimum-energy, ephemeris dynamics)...")
     print(f"  Duration: {(t_span_sec[1]-t_span_sec[0])/86400:.2f} days, {n_guesses} guesses")
@@ -334,8 +353,9 @@ def solve_shooting(r0, v0, rf_target, vf_target, t_span_sec, ephem_cache, n_gues
     best_lam0 = None
     best_sol = None
 
-    # Initial guess strategies
+    # Initial guess strategies — label each one for the per-seed record
     guesses = []
+    strategies = []  # parallel list of {"name": str, "scale": float}
 
     # Physics-based: align costate with velocity direction
     v_dir = (vf_target - v0) / np.linalg.norm(vf_target - v0)
@@ -343,6 +363,7 @@ def solve_shooting(r0, v0, rf_target, vf_target, t_span_sec, ephem_cache, n_gues
         lam0 = np.zeros(6)
         lam0[3:6] = scale * v_dir
         guesses.append(lam0)
+        strategies.append({"name": "velocity_aligned", "scale": float(scale)})
 
     # Also try position-aligned
     r_dir = (rf_target - r0) / np.linalg.norm(rf_target - r0)
@@ -350,14 +371,31 @@ def solve_shooting(r0, v0, rf_target, vf_target, t_span_sec, ephem_cache, n_gues
         lam0 = np.zeros(6)
         lam0[0:3] = scale * r_dir
         guesses.append(lam0)
+        strategies.append({"name": "position_aligned", "scale": float(scale)})
 
     # Random guesses
     rng = np.random.RandomState(42)
     for _ in range(n_guesses - len(guesses)):
         lam0 = rng.randn(6) * 1e-6
         guesses.append(lam0)
+        strategies.append({"name": "random_normal", "scale": 1e-6})
 
     for i, lam0_guess in enumerate(guesses):
+        strat = strategies[i]
+        seed_t0 = _time.perf_counter()
+        seed_entry = {
+            "seed_index": i,
+            "seed_strategy": strat["name"],
+            "seed_scale": strat["scale"],
+            "lam0_guess": lam0_guess.tolist(),
+            "lam0_sol": None,
+            "residual": None,
+            "nfev": None,
+            "wall_time_s": None,
+            "converged": False,
+            "exception": None,
+            "cost": None,
+        }
         try:
             lam0_sol, info, ier, msg = fsolve(
                 shooting_residual, lam0_guess,
@@ -365,18 +403,59 @@ def solve_shooting(r0, v0, rf_target, vf_target, t_span_sec, ephem_cache, n_gues
                 full_output=True, maxfev=80  # fewer evals per guess for speed
             )
 
-            res_norm = np.linalg.norm(info['fvec'])
+            res_norm = float(np.linalg.norm(info['fvec']))
+            seed_entry["lam0_sol"] = lam0_sol.tolist()
+            seed_entry["residual"] = res_norm
+            seed_entry["nfev"] = int(info.get("nfev", 0))
+            seed_entry["converged"] = bool(res_norm < 1e-4)
+
             if res_norm < best_res:
                 best_res = res_norm
                 best_lam0 = lam0_sol
 
                 status = "✓" if res_norm < 1.0 else "✗"
                 print(f"  Guess {i+1:2d}: residual = {res_norm:.4e} {status}", flush=True)
+            else:
+                print(f"  Guess {i+1:2d}: residual = {res_norm:.4e} (not improved)", flush=True)
 
-                if res_norm < 1e-4:
-                    break  # good enough for 7.5-day arc
+            if seed_records is not None:
+                seed_entry["wall_time_s"] = float(_time.perf_counter() - seed_t0)
+                seed_records.append(seed_entry)
+            if on_seed_done is not None:
+                try:
+                    on_seed_done(dict(seed_entry))
+                except Exception as cb_err:
+                    print(f"  [on_seed_done raised {cb_err!r}, continuing]", flush=True)
+
+            if early_stop and res_norm < 1e-4:
+                # Fill in unrun seeds as 'not_attempted' so caller sees full list
+                if seed_records is not None:
+                    for j in range(i + 1, len(guesses)):
+                        seed_records.append({
+                            "seed_index": j,
+                            "seed_strategy": strategies[j]["name"],
+                            "seed_scale": strategies[j]["scale"],
+                            "lam0_guess": guesses[j].tolist(),
+                            "lam0_sol": None,
+                            "residual": None,
+                            "nfev": 0,
+                            "wall_time_s": 0.0,
+                            "converged": False,
+                            "exception": "not_attempted_early_stop",
+                            "cost": None,
+                        })
+                break  # good enough for 7.5-day arc
         except Exception as e:
             print(f"  Guess {i+1:2d}: exception ({type(e).__name__})", flush=True)
+            seed_entry["exception"] = f"{type(e).__name__}: {e}"
+            seed_entry["wall_time_s"] = float(_time.perf_counter() - seed_t0)
+            if seed_records is not None:
+                seed_records.append(seed_entry)
+            if on_seed_done is not None:
+                try:
+                    on_seed_done(dict(seed_entry))
+                except Exception as cb_err:
+                    print(f"  [on_seed_done raised {cb_err!r}, continuing]", flush=True)
             continue
 
     if best_lam0 is None:
@@ -406,6 +485,14 @@ def solve_shooting(r0, v0, rf_target, vf_target, t_span_sec, ephem_cache, n_gues
     print(f"  Control cost (∫||u||² dt): {cost:.6e} km²/s⁴·s")
     print(f"  Max |u|: {u_mag.max():.6e} km/s²")
 
+    # Record best-of-sweep cost onto the winning seed entry (if tracking)
+    if seed_records is not None and best_lam0 is not None:
+        for entry in seed_records:
+            if (entry.get("lam0_sol") is not None
+                    and np.allclose(entry["lam0_sol"], best_lam0, rtol=1e-8, atol=1e-12)):
+                entry["cost"] = float(cost)
+                break
+
     return sol, best_lam0, cost
 
 
@@ -415,7 +502,7 @@ def solve_shooting(r0, v0, rf_target, vf_target, t_span_sec, ephem_cache, n_gues
 
 def solve_ipopt_collocation(r0, v0, rf_target, vf_target, t_span_sec,
                             ephem_cache, n_seg=60, sol_shooting=None,
-                            nasa_warmstart=None):
+                            nasa_warmstart=None, stats_out=None):
     """
     Direct multiple-shooting using CasADi/IPOPT with ephemeris-driven dynamics.
 
@@ -580,6 +667,43 @@ def solve_ipopt_collocation(r0, v0, rf_target, vf_target, t_span_sec,
     }
     opti.solver('ipopt', opts)
 
+    # --- Iteration-history capture for T3.4 convergence plot ---
+    # CasADi exposes per-iteration stats via opti.stats()["iterations"], but
+    # only *after* the solve and only when the solver internally logs them.
+    # Under CasADi 3.x the Ipopt interface populates iterations with keys
+    # {"obj", "inf_pr", "inf_du", "iter"}. We snapshot that list into
+    # stats_out["convergence_history"] for downstream plotting.
+    #
+    # We also record solver.stats() summary (iter_count, return_status,
+    # t_wall_total) into stats_out.
+    def _capture_stats(solve_ok, err_msg=None):
+        if stats_out is None:
+            return
+        try:
+            s = opti.stats()
+        except Exception:
+            s = {}
+        stats_out["raw_stats"] = s
+        stats_out["return_status"] = s.get("return_status")
+        stats_out["iter_count"] = s.get("iter_count")
+        stats_out["t_wall_total"] = s.get("t_wall_total")
+        stats_out["success"] = bool(solve_ok)
+        stats_out["error_message"] = err_msg
+        conv = []
+        it_log = s.get("iterations") or {}
+        if isinstance(it_log, dict) and it_log.get("obj"):
+            obj_hist = it_log.get("obj") or []
+            pr_hist = it_log.get("inf_pr") or []
+            du_hist = it_log.get("inf_du") or []
+            for k in range(len(obj_hist)):
+                conv.append({
+                    "iter": int(k),
+                    "obj": float(obj_hist[k]),
+                    "constr_viol": float(pr_hist[k]) if k < len(pr_hist) else None,
+                    "dual_inf": float(du_hist[k]) if k < len(du_hist) else None,
+                })
+        stats_out["convergence_history"] = conv
+
     try:
         sol = opti.solve()
         print("  IPOPT converged!")
@@ -597,10 +721,12 @@ def solve_ipopt_collocation(r0, v0, rf_target, vf_target, t_span_sec,
         print(f"  Mean |u|: {u_mag.mean():.6e} km/s²")
         print(f"  Final position error: {np.linalg.norm(X_sol[0:3, -1] - rf_target):.4e} km")
 
+        _capture_stats(solve_ok=True)
         return X_sol, U_sol, seg_times, J_val
 
     except RuntimeError as e:
         print(f"  IPOPT failed: {e}")
+        _capture_stats(solve_ok=False, err_msg=str(e))
         return None
 
 
