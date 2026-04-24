@@ -535,7 +535,7 @@ def run_full_mission():
 
 def plot_convergence_history(histories: dict, out_path: Path):
     """histories: {label: [ {iter, obj, constr_viol, dual_inf}, ... ]}"""
-    fig, (ax_obj, ax_viol) = plt.subplots(2, 1, figsize=(9, 7), sharex=True)
+    fig, (ax_obj, ax_viol) = plt.subplots(2, 1, figsize=(9, 7), sharex=True, facecolor='white')
 
     colors = {"artemis2_post_tli": "#3fb950", "artemis2_full_mission": "#f85149"}
 
@@ -554,15 +554,15 @@ def plot_convergence_history(histories: dict, out_path: Path):
     ax_obj.set_ylabel("|objective|  (∫ ‖u‖² dt, km²/s³)")
     ax_obj.set_title("IPOPT convergence history — Artemis II (Phase 2)")
     ax_obj.grid(True, which="both", alpha=0.3)
-    ax_obj.legend(loc="best")
+    ax_obj.legend(loc="best", facecolor='white', edgecolor='black', labelcolor='black')
 
     ax_viol.set_xlabel("IPOPT iteration")
     ax_viol.set_ylabel("constraint violation  (inf_pr, km or km/s)")
     ax_viol.grid(True, which="both", alpha=0.3)
-    ax_viol.legend(loc="best")
+    ax_viol.legend(loc="best", facecolor='white', edgecolor='black', labelcolor='black')
 
     fig.tight_layout()
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    fig.savefig(out_path, dpi=150, bbox_inches="tight", facecolor='white', edgecolor='white')
     plt.close(fig)
     print(f"  Saved {out_path}")
 

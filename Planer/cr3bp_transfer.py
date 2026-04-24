@@ -568,7 +568,7 @@ def solve_both(x0, xf, t0, tf, mu=MU):
 def plot_comparison(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer'):
     """Generate a comprehensive comparison figure."""
 
-    fig = plt.figure(figsize=(18, 11), facecolor='#0d1117')
+    fig = plt.figure(figsize=(18, 11), facecolor='white')
 
     # Use gridspec for better control: top row 3 equal, bottom row 3 equal
     gs = fig.add_gridspec(2, 3, hspace=0.32, wspace=0.30,
@@ -580,11 +580,11 @@ def plot_comparison(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer'):
     sol_L2 = lyap_data['L2']['sol']
 
     fig.suptitle('L1 → L2 Lyapunov Transfer: Shooting vs Bézier (IPOPT)',
-                 fontsize=15, fontweight='bold', y=0.98, color='#c9d1d9')
+                 fontsize=15, fontweight='bold', y=0.98, color='black')
 
     # ---- Panel 1: Trajectories (zoomed to cislunar corridor) ----
     ax = fig.add_subplot(gs[0, 0])
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
 
     ax.plot(sol_L1.y[0], sol_L1.y[1], '-', color='#3fb950', alpha=0.4,
             lw=1.2, label='L1 Lyapunov')
@@ -595,17 +595,17 @@ def plot_comparison(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer'):
     ax.plot(bezier['x'], bezier['y'], '--', color='#f85149', lw=2, alpha=0.8,
             label='Bézier (IPOPT)')
 
-    ax.plot(1 - MU, 0, 'o', color='#95a5a6', ms=7, mec='#30363d', mew=0.8,
+    ax.plot(1 - MU, 0, 'o', color='#95a5a6', ms=7, mec='black', mew=0.8,
             zorder=10, label='Moon')
-    ax.plot(xL1, 0, 'D', color='#f39c12', ms=7, mec='#30363d', mew=0.8,
+    ax.plot(xL1, 0, 'D', color='#f39c12', ms=7, mec='black', mew=0.8,
             zorder=10, label='L1')
-    ax.plot(xL2, 0, 'D', color='#f85149', ms=7, mec='#30363d', mew=0.8,
+    ax.plot(xL2, 0, 'D', color='#f85149', ms=7, mec='black', mew=0.8,
             zorder=10, label='L2')
 
     ax.plot(shooting['x'][0], shooting['y'][0], 'o', color='#3fb950',
-            ms=8, mec='white', mew=1, zorder=11, label='Departure')
+            ms=8, mec='black', mew=1, zorder=11, label='Departure')
     ax.plot(shooting['x'][-1], shooting['y'][-1], 's', color='#f85149',
-            ms=8, mec='white', mew=1, zorder=11, label='Arrival')
+            ms=8, mec='black', mew=1, zorder=11, label='Arrival')
 
     # Zoom to the L1-L2 corridor
     pad = 0.04
@@ -615,20 +615,20 @@ def plot_comparison(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer'):
     y_ext = max(abs(all_y.min()), abs(all_y.max())) + pad
     ax.set_ylim(-y_ext, y_ext)
     ax.set_aspect('equal')
-    ax.grid(True, alpha=0.15, color='#8b949e')
-    ax.set_xlabel('x (rotating frame)', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel('y (rotating frame)', fontsize=10, color='#c9d1d9')
-    ax.set_title('Transfer Trajectory', fontsize=11, fontweight='bold', color='#c9d1d9')
-    ax.tick_params(colors='#c9d1d9')
+    ax.grid(True, alpha=0.3, color='gray')
+    ax.set_xlabel('x (rotating frame)', fontsize=10, color='black')
+    ax.set_ylabel('y (rotating frame)', fontsize=10, color='black')
+    ax.set_title('Transfer Trajectory', fontsize=11, fontweight='bold', color='black')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
+        spine.set_color('black')
     ax.legend(fontsize=7.5, loc='upper left', framealpha=0.9,
               handlelength=1.5, borderpad=0.4, labelspacing=0.35,
-              facecolor='#161b22', edgecolor='#30363d', labelcolor='white')
+              facecolor='white', edgecolor='black', labelcolor='black')
 
     # ---- Panel 2: Trajectory difference ----
     ax = fig.add_subplot(gs[0, 1])
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     t_c = bezier['t']
     mask = (t_c >= t_c[1]) & (t_c <= t_c[-2])
     t_c_m = t_c[mask]
@@ -640,13 +640,13 @@ def plot_comparison(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer'):
 
     ax.semilogy(t_c_m, pos_diff, '-', color='#58a6ff', lw=1.5)
     ax.fill_between(t_c_m, pos_diff, alpha=0.15, color='#58a6ff')
-    ax.set_xlabel('Time (nondim)', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel('||Δr|| (position difference)', fontsize=10, color='#c9d1d9')
-    ax.set_title('Trajectory Difference', fontsize=11, fontweight='bold', color='#c9d1d9')
-    ax.grid(True, alpha=0.15, color='#8b949e')
-    ax.tick_params(colors='#c9d1d9')
+    ax.set_xlabel('Time (nondim)', fontsize=10, color='black')
+    ax.set_ylabel('||Δr|| (position difference)', fontsize=10, color='black')
+    ax.set_title('Trajectory Difference', fontsize=11, fontweight='bold', color='black')
+    ax.grid(True, alpha=0.3, color='gray')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
+        spine.set_color('black')
 
     # Annotate max difference
     idx_max = np.argmax(pos_diff)
@@ -655,29 +655,29 @@ def plot_comparison(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer'):
                 xytext=(0.55, 0.85), textcoords='axes fraction',
                 fontsize=9, color='#f85149',
                 arrowprops=dict(arrowstyle='->', color='#f85149', lw=1),
-                bbox=dict(boxstyle='round,pad=0.2', fc='#161b22', ec='#f85149',
+                bbox=dict(boxstyle='round,pad=0.2', fc='white', ec='#f85149',
                           alpha=0.8))
 
     # ---- Panel 3: Control magnitude ----
     ax = fig.add_subplot(gs[0, 2])
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.plot(shooting['t'], shooting['u_mag'], '-', color='#58a6ff', lw=1.8,
             label='Shooting', alpha=0.9)
     ax.plot(bezier['t'], bezier['u_mag'], '--', color='#f85149', lw=1.8,
             label='Bézier (IPOPT)', alpha=0.8)
-    ax.set_xlabel('Time (nondim)', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel('|u| (thrust magnitude)', fontsize=10, color='#c9d1d9')
-    ax.set_title('Control Magnitude', fontsize=11, fontweight='bold', color='#c9d1d9')
-    ax.tick_params(colors='#c9d1d9')
+    ax.set_xlabel('Time (nondim)', fontsize=10, color='black')
+    ax.set_ylabel('|u| (thrust magnitude)', fontsize=10, color='black')
+    ax.set_title('Control Magnitude', fontsize=11, fontweight='bold', color='black')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
+        spine.set_color('black')
     ax.legend(fontsize=9, loc='best', framealpha=0.9,
-              facecolor='#161b22', edgecolor='#30363d', labelcolor='white')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+              facecolor='white', edgecolor='black', labelcolor='black')
+    ax.grid(True, alpha=0.3, color='gray')
 
     # ---- Panel 4: Control components ----
     ax = fig.add_subplot(gs[1, 0])
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.plot(shooting['t'], shooting['ux'], '-', color='#58a6ff', lw=1.5,
             label='$u_x$ (shoot)')
     ax.plot(shooting['t'], shooting['uy'], '--', color='#58a6ff', lw=1.5,
@@ -686,20 +686,20 @@ def plot_comparison(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer'):
             alpha=0.7, label='$u_x$ (Bézier)')
     ax.plot(bezier['t'], bezier['uy'], '--', color='#f85149', lw=1.5,
             alpha=0.7, label='$u_y$ (Bézier)')
-    ax.set_xlabel('Time (nondim)', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel('Control component', fontsize=10, color='#c9d1d9')
-    ax.set_title('Control Components', fontsize=11, fontweight='bold', color='#c9d1d9')
-    ax.tick_params(colors='#c9d1d9')
+    ax.set_xlabel('Time (nondim)', fontsize=10, color='black')
+    ax.set_ylabel('Control component', fontsize=10, color='black')
+    ax.set_title('Control Components', fontsize=11, fontweight='bold', color='black')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
+        spine.set_color('black')
     ax.legend(fontsize=8.5, ncol=2, loc='best', framealpha=0.9,
               columnspacing=1.0, handlelength=1.8,
-              facecolor='#161b22', edgecolor='#30363d', labelcolor='white')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+              facecolor='white', edgecolor='black', labelcolor='black')
+    ax.grid(True, alpha=0.3, color='gray')
 
     # ---- Panel 5: Jacobi constant ----
     ax = fig.add_subplot(gs[1, 1])
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.plot(shooting['t'], shooting['jacobi'], '-', color='#58a6ff', lw=1.8, label='Shooting')
     ax.plot(bezier['t'], bezier['jacobi'], '--', color='#f85149', lw=1.8, label='Bézier')
     C0 = shooting['jacobi'][0]
@@ -713,16 +713,16 @@ def plot_comparison(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer'):
     ax.text(0.02, Cf, f' Cf={Cf:.4f}', fontsize=8, color='#a371f7',
             va='top', transform=ax.get_yaxis_transform())
 
-    ax.set_xlabel('Time (nondim)', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel('Jacobi constant C', fontsize=10, color='#c9d1d9')
+    ax.set_xlabel('Time (nondim)', fontsize=10, color='black')
+    ax.set_ylabel('Jacobi constant C', fontsize=10, color='black')
     ax.set_title('Jacobi Constant (varies with thrust)', fontsize=11,
-                 fontweight='bold', color='#c9d1d9')
-    ax.tick_params(colors='#c9d1d9')
+                 fontweight='bold', color='black')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
+        spine.set_color('black')
     ax.legend(fontsize=9, loc='best', framealpha=0.9,
-              facecolor='#161b22', edgecolor='#30363d', labelcolor='white')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+              facecolor='white', edgecolor='black', labelcolor='black')
+    ax.grid(True, alpha=0.3, color='gray')
 
     # ---- Panel 6: Stats table ----
     ax = fig.add_subplot(gs[1, 2])
@@ -753,25 +753,25 @@ def plot_comparison(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer'):
     table.scale(1.0, 1.65)
 
     for (i, j), cell in table.get_celld().items():
-        cell.set_edgecolor('#30363d')
+        cell.set_edgecolor('black')
         if i == 0:
-            cell.set_facecolor('#1f3460')
-            cell.set_text_props(color='white', fontweight='bold', fontsize=10)
+            cell.set_facecolor('white')
+            cell.set_text_props(color='black', fontweight='bold', fontsize=10)
         elif j == 0:
-            cell.set_facecolor('#161b22')
-            cell.set_text_props(color='#c9d1d9', fontweight='bold', fontsize=9.5)
+            cell.set_facecolor('white')
+            cell.set_text_props(color='black', fontweight='bold', fontsize=9.5)
         elif i % 2 == 0:
-            cell.set_facecolor('#161b22')
-            cell.set_text_props(color='#c9d1d9')
+            cell.set_facecolor('white')
+            cell.set_text_props(color='black')
         else:
-            cell.set_facecolor('#0d1117')
-            cell.set_text_props(color='#c9d1d9')
+            cell.set_facecolor('white')
+            cell.set_text_props(color='black')
 
     ax.set_title('Performance Comparison', pad=15, fontsize=11,
-                 fontweight='bold', color='#c9d1d9')
+                 fontweight='bold', color='black')
 
     fname = f'{save_prefix}_comparison.png'
-    plt.savefig(fname, dpi=150, facecolor='#0d1117')
+    plt.savefig(fname, dpi=150, facecolor='white', edgecolor='white')
     print(f"\nSaved: {fname}")
     plt.close(fig)
     return fname
@@ -781,8 +781,8 @@ def plot_zoomed_cislunar(shooting, bezier, lyap_data, save_prefix='cr3bp_transfe
     """
     Zoomed-in cislunar view showing the transfer in the L1-L2 corridor.
     """
-    fig, ax = plt.subplots(figsize=(14, 7), facecolor='#0d1117')
-    ax.set_facecolor('#0d1117')
+    fig, ax = plt.subplots(figsize=(14, 7), facecolor='white')
+    ax.set_facecolor('white')
 
     xL1 = lyap_data['L1']['xL']
     xL2 = lyap_data['L2']['xL']
@@ -800,15 +800,15 @@ def plot_zoomed_cislunar(shooting, bezier, lyap_data, save_prefix='cr3bp_transfe
             alpha=0.85, label='Bézier (IPOPT)', zorder=6)
 
     # Moon
-    ax.plot(1 - MU, 0, 'o', color='#bdc3c7', ms=10, mec='#30363d', mew=1.2,
+    ax.plot(1 - MU, 0, 'o', color='#bdc3c7', ms=10, mec='black', mew=1.2,
             zorder=10)
     ax.annotate('Moon', (1 - MU, 0), textcoords='offset points',
-                xytext=(8, -12), fontsize=10, color='#8b949e', fontweight='bold')
+                xytext=(8, -12), fontsize=10, color='black', fontweight='bold')
 
     # Libration points
-    ax.plot(xL1, 0, 'D', color='#f39c12', ms=10, mec='#30363d', mew=1,
+    ax.plot(xL1, 0, 'D', color='#f39c12', ms=10, mec='black', mew=1,
             zorder=10)
-    ax.plot(xL2, 0, 'D', color='#f85149', ms=10, mec='#30363d', mew=1,
+    ax.plot(xL2, 0, 'D', color='#f85149', ms=10, mec='black', mew=1,
             zorder=10)
     ax.annotate('L1', (xL1, 0), textcoords='offset points',
                 xytext=(-5, 12), fontsize=11, color='#f39c12',
@@ -819,9 +819,9 @@ def plot_zoomed_cislunar(shooting, bezier, lyap_data, save_prefix='cr3bp_transfe
 
     # Departure / arrival markers
     ax.plot(shooting['x'][0], shooting['y'][0], '*', color='#3fb950',
-            ms=18, mec='white', mew=1, zorder=11)
+            ms=18, mec='black', mew=1, zorder=11)
     ax.plot(shooting['x'][-1], shooting['y'][-1], '*', color='#f85149',
-            ms=18, mec='white', mew=1, zorder=11)
+            ms=18, mec='black', mew=1, zorder=11)
     ax.annotate('Departure', (shooting['x'][0], shooting['y'][0]),
                 textcoords='offset points', xytext=(-14, -16), fontsize=9,
                 color='#3fb950', fontweight='bold', ha='center')
@@ -849,21 +849,21 @@ def plot_zoomed_cislunar(shooting, bezier, lyap_data, save_prefix='cr3bp_transfe
     ax.set_ylim(-y_ext, y_ext)
 
     ax.set_aspect('equal')
-    ax.grid(True, alpha=0.15, color='#8b949e')
-    ax.set_xlabel('x (rotating frame, nondim)', fontsize=12, color='#c9d1d9')
-    ax.set_ylabel('y (rotating frame, nondim)', fontsize=12, color='#c9d1d9')
+    ax.grid(True, alpha=0.3, color='gray')
+    ax.set_xlabel('x (rotating frame, nondim)', fontsize=12, color='black')
+    ax.set_ylabel('y (rotating frame, nondim)', fontsize=12, color='black')
     ax.set_title('L1 → L2 Lyapunov Transfer  —  Earth-Moon CR3BP',
-                 fontsize=14, fontweight='bold', color='#c9d1d9')
-    ax.tick_params(colors='#c9d1d9')
+                 fontsize=14, fontweight='bold', color='black')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
+        spine.set_color('black')
     ax.legend(fontsize=10, loc='lower left', framealpha=0.92,
               borderpad=0.6, handlelength=2.0,
-              facecolor='#161b22', edgecolor='#30363d', labelcolor='white')
+              facecolor='white', edgecolor='black', labelcolor='black')
 
     plt.tight_layout()
     fname = f'{save_prefix}_cislunar.png'
-    plt.savefig(fname, dpi=150, facecolor='#0d1117')
+    plt.savefig(fname, dpi=150, facecolor='white', edgecolor='white')
     print(f"Saved: {fname}")
     plt.close(fig)
     return fname
@@ -891,7 +891,7 @@ def create_animation(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer',
     tf = shooting['t'][-1]
 
     fig, (ax_s, ax_b) = plt.subplots(1, 2, figsize=(16, 7))
-    fig.patch.set_facecolor('#0d1117')
+    fig.patch.set_facecolor('white')
 
     # Axis limits from trajectory extent
     all_x = np.concatenate([shooting['x'], bezier['x'],
@@ -907,17 +907,17 @@ def create_animation(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer',
         (ax_s, 'Indirect Shooting (PMP)', '#00d2ff'),
         (ax_b, 'Bézier Collocation (IPOPT)', '#ff6b6b'),
     ]:
-        ax.set_facecolor('#161b22')
+        ax.set_facecolor('white')
         ax.set_aspect('equal')
         ax.set_xlim(*xl)
         ax.set_ylim(*yl)
-        ax.set_xlabel('x (rotating frame)', color='#c9d1d9', fontsize=10)
-        ax.set_ylabel('y (rotating frame)', color='#c9d1d9', fontsize=10)
+        ax.set_xlabel('x (rotating frame)', color='black', fontsize=10)
+        ax.set_ylabel('y (rotating frame)', color='black', fontsize=10)
         ax.set_title(title, color=color_accent, fontsize=13, fontweight='bold')
-        ax.tick_params(colors='#8b949e')
+        ax.tick_params(colors='black')
         for spine in ax.spines.values():
-            spine.set_color('#30363d')
-        ax.grid(True, alpha=0.1, color='#8b949e')
+            spine.set_color('black')
+        ax.grid(True, alpha=0.3, color='gray')
 
     # Static elements on both panels
     for ax in [ax_s, ax_b]:
@@ -928,15 +928,15 @@ def create_animation(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer',
                 lw=1.2, label='L2 Lyapunov')
 
         # Bodies
-        ax.plot(1 - MU, 0, 'o', color='#bdc3c7', ms=8, mec='white', mew=0.5,
+        ax.plot(1 - MU, 0, 'o', color='#bdc3c7', ms=8, mec='black', mew=0.5,
                 zorder=10)  # Moon
         ax.annotate('Moon', (1 - MU, 0), textcoords='offset points',
-                    xytext=(0, -14), fontsize=7, color='#8b949e', ha='center')
+                    xytext=(0, -14), fontsize=7, color='black', ha='center')
 
         # Libration points
-        ax.plot(xL1, 0, 'D', color='#f0883e', ms=7, mec='#0d1117', mew=1,
+        ax.plot(xL1, 0, 'D', color='#f0883e', ms=7, mec='black', mew=1,
                 zorder=10)
-        ax.plot(xL2, 0, 'D', color='#f47067', ms=7, mec='#0d1117', mew=1,
+        ax.plot(xL2, 0, 'D', color='#f47067', ms=7, mec='black', mew=1,
                 zorder=10)
         ax.annotate('L1', (xL1, 0), textcoords='offset points',
                     xytext=(0, 10), fontsize=8, color='#f0883e', ha='center',
@@ -947,13 +947,13 @@ def create_animation(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer',
 
         # Departure / arrival markers (static)
         ax.plot(shooting['x'][0], shooting['y'][0], '*', color='#3fb950',
-                ms=14, mec='#0d1117', mew=0.8, zorder=11)
+                ms=14, mec='black', mew=0.8, zorder=11)
         ax.plot(shooting['x'][-1], shooting['y'][-1], '*', color='#f47067',
-                ms=14, mec='#0d1117', mew=0.8, zorder=11)
+                ms=14, mec='black', mew=0.8, zorder=11)
 
     # Animated elements — Shooting panel
     trail_s, = ax_s.plot([], [], '-', color='#00d2ff', lw=2.5, zorder=5)
-    craft_s, = ax_s.plot([], [], 'o', color='#00d2ff', ms=9, mec='white',
+    craft_s, = ax_s.plot([], [], 'o', color='#00d2ff', ms=9, mec='black',
                           mew=1.2, zorder=8)
     # Control quiver (updated per frame)
     quiver_s = ax_s.quiver([], [], [], [], color='#58a6ff', scale=15,
@@ -962,12 +962,12 @@ def create_animation(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer',
                         color='#00d2ff', fontsize=9, family='monospace',
                         verticalalignment='bottom',
                         bbox=dict(boxstyle='round,pad=0.3',
-                                  facecolor='#161b22', edgecolor='#30363d',
+                                  facecolor='white', edgecolor='black',
                                   alpha=0.85))
 
     # Animated elements — Bézier panel
     trail_b, = ax_b.plot([], [], '-', color='#ff6b6b', lw=2.5, zorder=5)
-    craft_b, = ax_b.plot([], [], 'o', color='#ff6b6b', ms=9, mec='white',
+    craft_b, = ax_b.plot([], [], 'o', color='#ff6b6b', ms=9, mec='black',
                           mew=1.2, zorder=8)
     quiver_b = ax_b.quiver([], [], [], [], color='#f778ba', scale=15,
                             width=0.003, alpha=0.6, zorder=4)
@@ -975,7 +975,7 @@ def create_animation(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer',
                         color='#ff6b6b', fontsize=9, family='monospace',
                         verticalalignment='bottom',
                         bbox=dict(boxstyle='round,pad=0.3',
-                                  facecolor='#161b22', edgecolor='#30363d',
+                                  facecolor='white', edgecolor='black',
                                   alpha=0.85))
 
     # Bézier control points fading in
@@ -988,7 +988,7 @@ def create_animation(shooting, bezier, lyap_data, save_prefix='cr3bp_transfer',
             cp_plots.append((p, cp))
 
     # Time title
-    time_text = fig.suptitle('', color='#c9d1d9', fontsize=12, y=0.97,
+    time_text = fig.suptitle('', color='black', fontsize=12, y=0.97,
                               fontweight='bold')
 
     n_s = len(shooting['t'])

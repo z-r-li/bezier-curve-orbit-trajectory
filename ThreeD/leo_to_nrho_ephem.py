@@ -732,7 +732,7 @@ def primer_vector_analysis(sol_best, problem, bodies, verbose=True):
 # =============================================================================
 
 def plot_trajectories_3d(sols, problem, bodies, outpath):
-    fig = plt.figure(figsize=(11, 8))
+    fig = plt.figure(figsize=(11, 8), facecolor='white')
     ax = fig.add_subplot(111, projection='3d')
 
     colors = {'lambert': '#888', 'shooting': '#1b7', 'bezier': '#c33'}
@@ -758,14 +758,14 @@ def plot_trajectories_3d(sols, problem, bodies, outpath):
     ax.set_xlabel('X EME2000 [km]'); ax.set_ylabel('Y EME2000 [km]')
     ax.set_zlabel('Z EME2000 [km]')
     ax.set_title(f"LEO → NRHO (impulsive, {problem['epoch_0'].iso[:10]})")
-    ax.legend(loc='upper left', fontsize=8)
+    ax.legend(loc='upper left', fontsize=8, facecolor='white', edgecolor='black', labelcolor='black')
     plt.tight_layout()
-    plt.savefig(outpath, dpi=150); plt.close()
+    plt.savefig(outpath, dpi=150, facecolor='white', edgecolor='white'); plt.close()
     print(f"  → wrote {outpath}")
 
 
 def plot_comparison_bar(sols, outpath):
-    fig, ax = plt.subplots(figsize=(8, 4))
+    fig, ax = plt.subplots(figsize=(8, 4), facecolor='white')
     methods, dv1s, dv2s = [], [], []
     for sol in sols:
         if not sol.get('converged', False):
@@ -780,27 +780,27 @@ def plot_comparison_bar(sols, outpath):
     ax.set_xticks(xs); ax.set_xticklabels(methods)
     ax.set_ylabel('ΔV [km/s]')
     ax.set_title('ΔV breakdown by method')
-    ax.legend()
+    ax.legend(facecolor='white', edgecolor='black', labelcolor='black')
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig(outpath, dpi=150); plt.close()
+    plt.savefig(outpath, dpi=150, facecolor='white', edgecolor='white'); plt.close()
     print(f"  → wrote {outpath}")
 
 
 def plot_primer_history(primer, outpath):
     if primer is None:
         return
-    fig, ax = plt.subplots(figsize=(9, 4))
+    fig, ax = plt.subplots(figsize=(9, 4), facecolor='white')
     ax.plot(primer['t'] / 86400.0, primer['primer_mag'], 'k-', lw=1.3)
     ax.axhline(1.0, color='#c33', lw=0.8, ls='--', label='Optimality bound')
     ax.set_xlabel('time [days from LEO departure]')
     ax.set_ylabel('|λ_v|')
     ax.set_title(f"Primer-vector history — max = {primer['max_primer']:.3f} "
                  f"{'(optimal)' if primer['is_optimal'] else '(MCC would help)'}")
-    ax.legend()
+    ax.legend(facecolor='white', edgecolor='black', labelcolor='black')
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig(outpath, dpi=150); plt.close()
+    plt.savefig(outpath, dpi=150, facecolor='white', edgecolor='white'); plt.close()
     print(f"  → wrote {outpath}")
 
 

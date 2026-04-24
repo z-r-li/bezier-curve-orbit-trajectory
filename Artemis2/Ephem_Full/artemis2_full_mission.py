@@ -502,7 +502,7 @@ def plot_static(times_sec, nasa_pos, nasa_vel, sol_ballistic, ipopt_result,
     t_days = (t_nasa - t_nasa[0]) / 86400.0
 
     # --- Figure 1: 3D trajectory ---
-    fig = plt.figure(figsize=(16, 12))
+    fig = plt.figure(figsize=(16, 12), facecolor='white')
     ax = fig.add_subplot(111, projection='3d')
 
     ax.plot(r_nasa[:, 0], r_nasa[:, 1], r_nasa[:, 2],
@@ -570,15 +570,15 @@ def plot_static(times_sec, nasa_pos, nasa_vel, sol_ballistic, ipopt_result,
     ax.set_ylabel('Y (km)', fontsize=12)
     ax.set_zlabel('Z (km)', fontsize=12)
     ax.set_title('Artemis II — Full Mission\n(Earth-Centered J2000, Ephemeris-Driven)', fontsize=14)
-    ax.legend(loc='upper left', fontsize=9)
+    ax.legend(loc='upper left', fontsize=9, facecolor='white', edgecolor='black', labelcolor='black')
 
-    fig.savefig(os.path.join(output_dir, 'full_3d_trajectory.png'), dpi=150, bbox_inches='tight')
+    fig.savefig(os.path.join(output_dir, 'full_3d_trajectory.png'), dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
     plt.close(fig)
     print("    Saved full_3d_trajectory.png")
 
     # --- Figure 2: Control profile ---
     if ipopt_result is not None:
-        fig, axes = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
+        fig, axes = plt.subplots(2, 1, figsize=(14, 8), sharex=True, facecolor='white')
         U_sol = ipopt_result[1]
         seg_times_arr = ipopt_result[2]
         seg_days_arr = (seg_times_arr[:-1] - seg_times_arr[0]) / 86400.0
@@ -589,7 +589,7 @@ def plot_static(times_sec, nasa_pos, nasa_vel, sol_ballistic, ipopt_result,
         axes[0].fill_between(seg_days_arr, u_mag, alpha=0.3, color='green')
         axes[0].set_ylabel('|u| (km/s²)', fontsize=12)
         axes[0].set_title('IPOPT Control Profile — Reconstructed Thrust History', fontsize=14)
-        axes[0].grid(True, alpha=0.3)
+        axes[0].grid(True, alpha=0.3, color='gray')
 
         # Mark burns
         if burns:
@@ -599,7 +599,7 @@ def plot_static(times_sec, nasa_pos, nasa_vel, sol_ballistic, ipopt_result,
                 axes[1].axvspan(burn['day_start'], burn['day_end'],
                                 alpha=0.2, color='orange')
 
-        axes[0].legend(fontsize=10)
+        axes[0].legend(fontsize=10, facecolor='white', edgecolor='black', labelcolor='black')
 
         # Control components
         axes[1].plot(seg_days_arr, U_sol[0, :], 'r-', lw=1, label='$u_x$', alpha=0.8)
@@ -607,16 +607,16 @@ def plot_static(times_sec, nasa_pos, nasa_vel, sol_ballistic, ipopt_result,
         axes[1].plot(seg_days_arr, U_sol[2, :], 'b-', lw=1, label='$u_z$', alpha=0.8)
         axes[1].set_xlabel('Time (days from mission start)', fontsize=12)
         axes[1].set_ylabel('Control (km/s²)', fontsize=12)
-        axes[1].legend(fontsize=10)
-        axes[1].grid(True, alpha=0.3)
+        axes[1].legend(fontsize=10, facecolor='white', edgecolor='black', labelcolor='black')
+        axes[1].grid(True, alpha=0.3, color='gray')
 
         fig.tight_layout()
-        fig.savefig(os.path.join(output_dir, 'full_control_profile.png'), dpi=150, bbox_inches='tight')
+        fig.savefig(os.path.join(output_dir, 'full_control_profile.png'), dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
         plt.close(fig)
         print("    Saved full_control_profile.png")
 
     # --- Figure 3: Error comparison ---
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 8), sharex=True, facecolor='white')
 
     if sol_ballistic is not None:
         bal_interp = interp1d(sol_ballistic.t, sol_ballistic.y[0:3], axis=1, fill_value='extrapolate')
@@ -643,21 +643,21 @@ def plot_static(times_sec, nasa_pos, nasa_vel, sol_ballistic, ipopt_result,
 
     ax1.set_ylabel('Position Error (km)', fontsize=12)
     ax1.set_title('Trajectory Error vs NASA Ephemeris — Full Mission', fontsize=14)
-    ax1.legend(fontsize=11)
-    ax1.grid(True, alpha=0.3)
+    ax1.legend(fontsize=11, facecolor='white', edgecolor='black', labelcolor='black')
+    ax1.grid(True, alpha=0.3, color='gray')
 
     ax2.set_xlabel('Time (days)', fontsize=12)
     ax2.set_ylabel('Velocity Error (km/s)', fontsize=12)
-    ax2.legend(fontsize=11)
-    ax2.grid(True, alpha=0.3)
+    ax2.legend(fontsize=11, facecolor='white', edgecolor='black', labelcolor='black')
+    ax2.grid(True, alpha=0.3, color='gray')
 
     fig.tight_layout()
-    fig.savefig(os.path.join(output_dir, 'full_error_comparison.png'), dpi=150, bbox_inches='tight')
+    fig.savefig(os.path.join(output_dir, 'full_error_comparison.png'), dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
     plt.close(fig)
     print("    Saved full_error_comparison.png")
 
     # --- Figure 4: 2D projections ---
-    fig, axes = plt.subplots(1, 3, figsize=(20, 6))
+    fig, axes = plt.subplots(1, 3, figsize=(20, 6), facecolor='white')
     projs = [(0,1,'X','Y'), (0,2,'X','Z'), (1,2,'Y','Z')]
     for ax, (i,j,xl,yl) in zip(axes, projs):
         ax.plot(r_nasa[:,i], r_nasa[:,j], 'b-', lw=2, label='NASA', alpha=0.9)
@@ -671,12 +671,12 @@ def plot_static(times_sec, nasa_pos, nasa_vel, sol_ballistic, ipopt_result,
         ax.set_xlabel(f'{xl} (km)', fontsize=11)
         ax.set_ylabel(f'{yl} (km)', fontsize=11)
         ax.set_title(f'{xl}{yl} Projection', fontsize=12)
-        ax.legend(fontsize=9)
-        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=9, facecolor='white', edgecolor='black', labelcolor='black')
+        ax.grid(True, alpha=0.3, color='gray')
 
     fig.suptitle('Artemis II — 2D Projections (Full Mission)', fontsize=14, y=1.02)
     fig.tight_layout()
-    fig.savefig(os.path.join(output_dir, 'full_2d_projections.png'), dpi=150, bbox_inches='tight')
+    fig.savefig(os.path.join(output_dir, 'full_2d_projections.png'), dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
     plt.close(fig)
     print("    Saved full_2d_projections.png")
 
@@ -713,19 +713,19 @@ def create_animation(times_sec, nasa_pos, sol_ballistic, ipopt_result,
         ip_pos = None
 
     # --- Setup figure ---
-    fig = plt.figure(figsize=(16, 10), facecolor='#0d1117')
-    ax = fig.add_subplot(111, projection='3d', facecolor='#0d1117')
+    fig = plt.figure(figsize=(16, 10), facecolor='white')
+    ax = fig.add_subplot(111, projection='3d', facecolor='white')
 
     # Set axis style
     for axis in [ax.xaxis, ax.yaxis, ax.zaxis]:
         axis.pane.fill = False
-        axis.pane.set_edgecolor('#30363d')
-        axis.label.set_color('white')
-        axis.set_tick_params(colors='#8b949e')
+        axis.pane.set_edgecolor('black')
+        axis.label.set_color('black')
+        axis.set_tick_params(colors='black')
 
-    ax.set_xlabel('X (km)', fontsize=10, color='white')
-    ax.set_ylabel('Y (km)', fontsize=10, color='white')
-    ax.set_zlabel('Z (km)', fontsize=10, color='white')
+    ax.set_xlabel('X (km)', fontsize=10, color='black')
+    ax.set_ylabel('Y (km)', fontsize=10, color='black')
+    ax.set_zlabel('Z (km)', fontsize=10, color='black')
 
     # Compute axis limits from NASA trajectory
     pad = 30000
@@ -742,7 +742,7 @@ def create_animation(times_sec, nasa_pos, sol_ballistic, ipopt_result,
     moon_full_t = np.linspace(t_nasa[0], t_nasa[-1], 500)
     moon_full = np.array([ephem_cache.get_moon_at(t) for t in moon_full_t])
     ax.plot(moon_full[:,0], moon_full[:,1], moon_full[:,2],
-            '--', color='#444444', lw=0.5, alpha=0.5)
+            '--', color='gray', lw=0.5, alpha=0.5)
 
     # Precompute per-segment burn flag for IPOPT trajectory coloring
     ip_is_burn = np.zeros(len(ip_seg_times), dtype=bool) if ip_pos is not None else None
@@ -772,12 +772,12 @@ def create_animation(times_sec, nasa_pos, sol_ballistic, ipopt_result,
     ax.plot([], [], [], '-', color=COLOR_BURN, lw=3, label='IPOPT (burn)')
 
     moon_dot, = ax.plot([], [], [], 'o', color='silver', ms=12, zorder=10,
-                         markeredgecolor='white', markeredgewidth=1)
+                         markeredgecolor='black', markeredgewidth=1)
 
-    title = ax.set_title('', fontsize=14, color='white', pad=20)
+    title = ax.set_title('', fontsize=14, color='black', pad=20)
 
-    ax.legend(loc='upper left', fontsize=9, facecolor='#161b22', edgecolor='#30363d',
-              labelcolor='white')
+    ax.legend(loc='upper left', fontsize=9, facecolor='white', edgecolor='black',
+              labelcolor='black')
 
     def update(frame):
         idx = frame_indices[frame]

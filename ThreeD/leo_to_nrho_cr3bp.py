@@ -622,7 +622,7 @@ def plot_results(x0, xf, tf, info, ballistic, ipopt_result, shooting_result):
     c_moon = '#9E9E9E'
 
     # ----- Figure 1: 3D Trajectory -----
-    fig = plt.figure(figsize=(14, 10))
+    fig = plt.figure(figsize=(14, 10), facecolor='white')
     ax = fig.add_subplot(111, projection='3d')
 
     # NRHO orbit (2 periods for context)
@@ -661,14 +661,14 @@ def plot_results(x0, xf, tf, info, ballistic, ipopt_result, shooting_result):
     ax.set_ylabel('y (nondim)')
     ax.set_zlabel('z (nondim)')
     ax.set_title('LEO → NRHO Transfer (3D CR3BP Rotating Frame)')
-    ax.legend(loc='upper left', fontsize=8)
+    ax.legend(loc='upper left', fontsize=8, facecolor='white', edgecolor='black', labelcolor='black')
 
-    fig.savefig(os.path.join(OUTDIR, '3d_trajectory.png'), dpi=150, bbox_inches='tight')
+    fig.savefig(os.path.join(OUTDIR, '3d_trajectory.png'), dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
     plt.close(fig)
     print("  Saved 3d_trajectory.png")
 
     # ----- Figure 2: 2D Projections -----
-    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6), facecolor='white')
     projections = [
         (0, 1, 'x', 'y', 'XY Projection (Earth-Moon plane)'),
         (0, 2, 'x', 'z', 'XZ Projection'),
@@ -707,17 +707,16 @@ def plot_results(x0, xf, tf, info, ballistic, ipopt_result, shooting_result):
         ax.set_ylabel(yl)
         ax.set_title(title)
         ax.grid(True, alpha=0.3)
-        if ax == axes[0]:
-            ax.legend(fontsize=7)
+        ax.legend(loc='best', frameon=True, facecolor='white', edgecolor='black', labelcolor='black', fontsize=7)
 
     fig.suptitle('LEO → NRHO Transfer — 2D Projections', fontsize=14)
     fig.tight_layout()
-    fig.savefig(os.path.join(OUTDIR, '2d_projections.png'), dpi=150, bbox_inches='tight')
+    fig.savefig(os.path.join(OUTDIR, '2d_projections.png'), dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
     plt.close(fig)
     print("  Saved 2d_projections.png")
 
     # ----- Figure 3: Control Profile -----
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10), facecolor='white')
 
     t_scale = T_STAR / 86400.0  # nondim → days
 
@@ -738,7 +737,7 @@ def plot_results(x0, xf, tf, info, ballistic, ipopt_result, shooting_result):
     ax.set_xlabel('Time (days)')
     ax.set_ylabel('|u| (m/s²)')
     ax.set_title('Control Magnitude')
-    ax.legend()
+    ax.legend(facecolor='white', edgecolor='black', labelcolor='black')
     ax.grid(True, alpha=0.3)
 
     # Control components (IPOPT)
@@ -751,7 +750,7 @@ def plot_results(x0, xf, tf, info, ballistic, ipopt_result, shooting_result):
     ax.set_xlabel('Time (days)')
     ax.set_ylabel('Control (m/s²)')
     ax.set_title('IPOPT Control Components')
-    ax.legend()
+    ax.legend(facecolor='white', edgecolor='black', labelcolor='black')
     ax.grid(True, alpha=0.3)
 
     # Jacobi constant
@@ -767,7 +766,7 @@ def plot_results(x0, xf, tf, info, ballistic, ipopt_result, shooting_result):
     ax.set_xlabel('Time (days)')
     ax.set_ylabel('Jacobi Constant C')
     ax.set_title('Jacobi Constant Along Transfer')
-    ax.legend(fontsize=7)
+    ax.legend(fontsize=7, facecolor='white', edgecolor='black', labelcolor='black')
     ax.grid(True, alpha=0.3)
 
     # Distance from Moon
@@ -789,17 +788,17 @@ def plot_results(x0, xf, tf, info, ballistic, ipopt_result, shooting_result):
     ax.set_xlabel('Time (days)')
     ax.set_ylabel('Distance from Moon (km)')
     ax.set_title('Distance from Moon')
-    ax.legend(fontsize=7)
+    ax.legend(fontsize=7, facecolor='white', edgecolor='black', labelcolor='black')
     ax.grid(True, alpha=0.3)
 
     fig.suptitle('LEO → NRHO Transfer — Control and Diagnostics', fontsize=14)
     fig.tight_layout()
-    fig.savefig(os.path.join(OUTDIR, 'control_profile.png'), dpi=150, bbox_inches='tight')
+    fig.savefig(os.path.join(OUTDIR, 'control_profile.png'), dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
     plt.close(fig)
     print("  Saved control_profile.png")
 
     # ----- Figure 4: Summary Table -----
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(12, 6), facecolor='white')
     ax.axis('off')
 
     if ipopt_result:
@@ -849,7 +848,7 @@ def plot_results(x0, xf, tf, info, ballistic, ipopt_result, shooting_result):
             cell.set_text_props(weight='bold')
 
     ax.set_title('LEO → NRHO Transfer — Comparison Summary', fontsize=14, pad=20)
-    fig.savefig(os.path.join(OUTDIR, 'summary_stats.png'), dpi=150, bbox_inches='tight')
+    fig.savefig(os.path.join(OUTDIR, 'summary_stats.png'), dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
     plt.close(fig)
     print("  Saved summary_stats.png")
 

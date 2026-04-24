@@ -110,11 +110,11 @@ def main():
     # Plots
     # =========================================================================
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
-    fig.patch.set_facecolor('#0d1117')
+    fig.patch.set_facecolor('white')
 
     # Trajectory
     ax = axes[0, 0]
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.plot(rx, ry, color='#58a6ff', label='Spacecraft', lw=2)
     ax.plot(mars_x, mars_y, color='#f85149', linestyle='--', alpha=0.5, label='Mars Orbit')
     ax.plot(r0[0], r0[1], 'o', color='#3fb950', markersize=8, label='Earth (start)')
@@ -122,60 +122,60 @@ def main():
             markeredgewidth=2, label='Mars (end)')
     ax.plot(0, 0, 'o', color='#f39c12', markersize=12, label='Sun')
     ax.set_aspect('equal')
-    ax.set_xlabel('x (AU)', color='#c9d1d9')
-    ax.set_ylabel('y (AU)', color='#c9d1d9')
-    ax.set_title('Low-Thrust Min-Energy Transfer (Earth-Mars)', color='#c9d1d9')
-    ax.legend(fontsize=8, facecolor='#161b22', edgecolor='#30363d', labelcolor='#c9d1d9')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+    ax.set_xlabel('x (AU)', color='black')
+    ax.set_ylabel('y (AU)', color='black')
+    ax.set_title('Low-Thrust Min-Energy Transfer (Earth-Mars)', color='black')
+    ax.legend(fontsize=8, facecolor='white', edgecolor='black', labelcolor='black')
+    ax.grid(True, alpha=0.3, color='gray')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
-    ax.tick_params(colors='#8b949e')
+        spine.set_color('black')
+    ax.tick_params(colors='black')
 
     # Control history
     ax = axes[0, 1]
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.plot(t_plot, ux, label='ux', color='#58a6ff')
     ax.plot(t_plot, uy, label='uy', color='#79c0ff')
     ax.plot(t_plot, u_mag, linestyle='--', label='|u|', color='#3fb950', lw=1.5)
-    ax.set_xlabel('Time (t)', color='#c9d1d9')
-    ax.set_ylabel('Control (AU/t²)', color='#c9d1d9')
-    ax.set_title('Control History', color='#c9d1d9')
-    ax.legend(facecolor='#161b22', edgecolor='#30363d', labelcolor='#c9d1d9')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+    ax.set_xlabel('Time (t)', color='black')
+    ax.set_ylabel('Control (AU/t²)', color='black')
+    ax.set_title('Control History', color='black')
+    ax.legend(facecolor='white', edgecolor='black', labelcolor='black')
+    ax.grid(True, alpha=0.3, color='gray')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
-    ax.tick_params(colors='#8b949e')
+        spine.set_color('black')
+    ax.tick_params(colors='black')
 
     # Costate history
     ax = axes[1, 0]
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.plot(t_plot, sol.y[4], label=r'$\lambda_{rx}$', color='#58a6ff')
     ax.plot(t_plot, sol.y[5], label=r'$\lambda_{ry}$', color='#79c0ff')
     ax.plot(t_plot, sol.y[6], label=r'$\lambda_{vx}$', color='#f85149')
     ax.plot(t_plot, sol.y[7], label=r'$\lambda_{vy}$', color='#ff7b72')
-    ax.set_xlabel('Time (t)', color='#c9d1d9')
-    ax.set_ylabel('Costate', color='#c9d1d9')
-    ax.set_title('Costate History', color='#c9d1d9')
-    ax.legend(facecolor='#161b22', edgecolor='#30363d', labelcolor='#c9d1d9')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+    ax.set_xlabel('Time (t)', color='black')
+    ax.set_ylabel('Costate', color='black')
+    ax.set_title('Costate History', color='black')
+    ax.legend(facecolor='white', edgecolor='black', labelcolor='black')
+    ax.grid(True, alpha=0.3, color='gray')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
-    ax.tick_params(colors='#8b949e')
+        spine.set_color('black')
+    ax.tick_params(colors='black')
 
     # Hamiltonian
     ax = axes[1, 1]
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.plot(t_plot, delta_H, color='#3fb950', lw=1.5)
-    ax.set_xlabel('Time (t)', color='#c9d1d9')
-    ax.set_ylabel('H(t) - H(0)', color='#c9d1d9')
-    ax.set_title('Hamiltonian Conservation Check', color='#c9d1d9')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+    ax.set_xlabel('Time (t)', color='black')
+    ax.set_ylabel('H(t) - H(0)', color='black')
+    ax.set_title('Hamiltonian Conservation Check', color='black')
+    ax.grid(True, alpha=0.3, color='gray')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
-    ax.tick_params(colors='#8b949e')
+        spine.set_color('black')
+    ax.tick_params(colors='black')
 
     plt.tight_layout()
-    plt.savefig('validation_min_energy.png', dpi=150, facecolor='#0d1117')
+    plt.savefig('validation_min_energy.png', dpi=150, facecolor='white', edgecolor='white')
     print(f"\nPlot saved to validation_min_energy.png")
 
     # =========================================================================

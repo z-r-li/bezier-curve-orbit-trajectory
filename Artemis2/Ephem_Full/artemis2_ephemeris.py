@@ -790,9 +790,9 @@ def plot_results(times_sec, nasa_pos, nasa_vel,
     r_nasa = nasa_pos  # (N, 3) in km
 
     # --- Figure 1: 3D Trajectory ---
-    fig = plt.figure(figsize=(14, 10), facecolor='#0d1117')
+    fig = plt.figure(figsize=(14, 10), facecolor='white')
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
 
     # NASA
     ax.plot(r_nasa[:, 0], r_nasa[:, 1], r_nasa[:, 2],
@@ -821,7 +821,7 @@ def plot_results(times_sec, nasa_pos, nasa_vel,
                 color='#3fb950', linewidth=1.5, linestyle=':', label='IPOPT (propagated)', alpha=0.7)
 
     # Earth
-    ax.scatter([0], [0], [0], c='cyan', s=200, marker='o', edgecolors='white',
+    ax.scatter([0], [0], [0], c='cyan', s=200, marker='o', edgecolors='black',
                linewidth=2, label='Earth', zorder=10)
 
     # Moon positions along orbit (multiple epochs)
@@ -832,29 +832,29 @@ def plot_results(times_sec, nasa_pos, nasa_vel,
         moon_pos_sample.append(rm)
     moon_pos_sample = np.array(moon_pos_sample)
     ax.scatter(moon_pos_sample[:, 0], moon_pos_sample[:, 1], moon_pos_sample[:, 2],
-               c='gray', s=80, marker='o', edgecolors='white', linewidth=1,
+               c='gray', s=80, marker='o', edgecolors='black', linewidth=1,
                label='Moon (orbit)', zorder=10)
 
     # Moon orbit trace (faint dashed line)
     ax.plot(moon_pos_sample[:, 0], moon_pos_sample[:, 1], moon_pos_sample[:, 2],
             color='gray', linewidth=0.8, linestyle='--', alpha=0.3)
 
-    ax.set_xlabel('X (km)', fontsize=12, color='white')
-    ax.set_ylabel('Y (km)', fontsize=12, color='white')
-    ax.set_zlabel('Z (km)', fontsize=12, color='white')
-    ax.tick_params(colors='white')
+    ax.set_xlabel('X (km)', fontsize=12, color='black')
+    ax.set_ylabel('Y (km)', fontsize=12, color='black')
+    ax.set_zlabel('Z (km)', fontsize=12, color='black')
+    ax.tick_params(colors='black')
     ax.set_title('Artemis II — Ephemeris-Driven Propagator\n(Earth-Centered J2000)',
-                 fontsize=14, color='white')
-    ax.legend(loc='upper left', fontsize=10, facecolor='#1c2128', edgecolor='white',
-             labelcolor='white')
+                 fontsize=14, color='black')
+    ax.legend(loc='upper left', fontsize=10, facecolor='white', edgecolor='black',
+             labelcolor='black')
 
     fig.savefig(os.path.join(output_dir, 'ephem_3d_trajectory.png'),
-                dpi=150, bbox_inches='tight')
+                dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
     plt.close(fig)
     print("  Saved ephem_3d_trajectory.png")
 
     # --- Figure 2: 2D Projections ---
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5.5))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5.5), facecolor='white')
 
     projections = [
         (0, 1, 'X (km)', 'Y (km)', 'XY Projection'),
@@ -884,18 +884,18 @@ def plot_results(times_sec, nasa_pos, nasa_vel,
         ax.set_xlabel(xl, fontsize=11)
         ax.set_ylabel(yl, fontsize=11)
         ax.set_title(title, fontsize=12)
-        ax.legend(fontsize=9)
-        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=9, facecolor='white', edgecolor='black', labelcolor='black')
+        ax.grid(True, alpha=0.3, color='gray')
 
     fig.suptitle('Artemis II — 2D Projections (ECI, km)', fontsize=14, y=1.02)
     fig.tight_layout()
     fig.savefig(os.path.join(output_dir, 'ephem_2d_projections.png'),
-                dpi=150, bbox_inches='tight')
+                dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
     plt.close(fig)
     print("  Saved ephem_2d_projections.png")
 
     # --- Figure 3: Position/Velocity Error vs NASA ---
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8), sharex=True, facecolor='white')
 
     t_days = (t_nasa - t_nasa[0]) / 86400.0
 
@@ -937,22 +937,22 @@ def plot_results(times_sec, nasa_pos, nasa_vel,
 
     ax1.set_ylabel('Position Error (km)', fontsize=12)
     ax1.set_title('Trajectory Error vs NASA Ephemeris', fontsize=14)
-    ax1.legend(fontsize=11)
-    ax1.grid(True, alpha=0.3)
+    ax1.legend(fontsize=11, facecolor='white', edgecolor='black', labelcolor='black')
+    ax1.grid(True, alpha=0.3, color='gray')
 
     ax2.set_xlabel('Time (days from segment start)', fontsize=12)
     ax2.set_ylabel('Velocity Error (km/s)', fontsize=12)
-    ax2.legend(fontsize=11)
-    ax2.grid(True, alpha=0.3)
+    ax2.legend(fontsize=11, facecolor='white', edgecolor='black', labelcolor='black')
+    ax2.grid(True, alpha=0.3, color='gray')
 
     fig.tight_layout()
     fig.savefig(os.path.join(output_dir, 'ephem_error_comparison.png'),
-                dpi=150, bbox_inches='tight')
+                dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
     plt.close(fig)
     print("  Saved ephem_error_comparison.png")
 
     # --- Figure 4: Summary statistics ---
-    fig, ax = plt.subplots(figsize=(12, 7))
+    fig, ax = plt.subplots(figsize=(12, 7), facecolor='white')
     ax.axis('off')
 
     lines = []
@@ -998,7 +998,7 @@ def plot_results(times_sec, nasa_pos, nasa_vel,
             bbox=dict(boxstyle='round,pad=0.8', facecolor='lightyellow', alpha=0.9))
 
     fig.savefig(os.path.join(output_dir, 'ephem_summary_stats.png'),
-                dpi=150, bbox_inches='tight')
+                dpi=150, bbox_inches='tight', facecolor='white', edgecolor='white')
     plt.close(fig)
     print("  Saved ephem_summary_stats.png")
 
@@ -1047,20 +1047,20 @@ def create_animation(times_sec, nasa_pos, sol_ballistic, ipopt_result,
     moon_at_nasa = moon_interp(times_sec)
     r_min_to_moon = np.linalg.norm(nasa_pos - moon_at_nasa, axis=1).min()
 
-    fig = plt.figure(figsize=(12, 9), facecolor='#0d1117')
+    fig = plt.figure(figsize=(12, 9), facecolor='white')
     ax = fig.add_subplot(111, projection='3d')
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
 
-    # Set text color to white for visibility on dark background
-    ax.xaxis.label.set_color('white')
-    ax.yaxis.label.set_color('white')
-    ax.zaxis.label.set_color('white')
-    ax.tick_params(colors='white')
+    # Set text color to black for visibility on white background
+    ax.xaxis.label.set_color('black')
+    ax.yaxis.label.set_color('black')
+    ax.zaxis.label.set_color('black')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('white')
+        spine.set_color('black')
 
     title_text = ax.text2D(0.5, 0.95, '', transform=ax.transAxes,
-                           fontsize=13, ha='center', color='white', weight='bold')
+                           fontsize=13, ha='center', color='black', weight='bold')
 
     # Initialize line collections for building trajectories
     lines_data = {
@@ -1071,9 +1071,9 @@ def create_animation(times_sec, nasa_pos, sol_ballistic, ipopt_result,
 
     # Initialize scatter plots
     earth_point = ax.scatter([0], [0], [0], c='cyan', s=150, marker='o',
-                            edgecolors='white', linewidth=1.5, label='Earth', zorder=10)
+                            edgecolors='black', linewidth=1.5, label='Earth', zorder=10)
     moon_point = ax.scatter([0], [0], [0], c='gray', s=80, marker='o',
-                           edgecolors='white', linewidth=1, zorder=10)
+                           edgecolors='black', linewidth=1, zorder=10)
     nasa_dot = ax.scatter([0], [0], [0], c='#58a6ff', s=60, marker='o', zorder=11)
 
     # Track indices for building trajectories
@@ -1096,11 +1096,11 @@ def create_animation(times_sec, nasa_pos, sol_ballistic, ipopt_result,
     moon_trace, = ax.plot([], [], [], 'gray', linewidth=0.5, linestyle='--',
                           alpha=0.3, label='Moon orbit')
 
-    ax.set_xlabel('X (km)', fontsize=11, color='white')
-    ax.set_ylabel('Y (km)', fontsize=11, color='white')
-    ax.set_zlabel('Z (km)', fontsize=11, color='white')
-    ax.legend(loc='upper left', fontsize=9, facecolor='#1c2128', edgecolor='white',
-             labelcolor='white')
+    ax.set_xlabel('X (km)', fontsize=11, color='black')
+    ax.set_ylabel('Y (km)', fontsize=11, color='black')
+    ax.set_zlabel('Z (km)', fontsize=11, color='black')
+    ax.legend(loc='upper left', fontsize=9, facecolor='white', edgecolor='black',
+             labelcolor='black')
 
     # Set axis limits
     all_pos = nasa_pos.copy()

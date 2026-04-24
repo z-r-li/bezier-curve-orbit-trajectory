@@ -94,7 +94,7 @@ def plot_sweep_trajectories(shooting, sweep, lyap_data,
     # Choose a near-square grid (2-column-friendly)
     n_cols = 2 if n_panels <= 4 else 3
     n_rows = int(np.ceil(n_panels / n_cols))
-    fig = plt.figure(figsize=(5.5 * n_cols, 4.6 * n_rows), facecolor='#0d1117')
+    fig = plt.figure(figsize=(5.5 * n_cols, 4.6 * n_rows), facecolor='white')
     gs = fig.add_gridspec(n_rows, n_cols, hspace=0.32, wspace=0.25,
                           left=0.06, right=0.97, top=0.94, bottom=0.06)
 
@@ -105,12 +105,12 @@ def plot_sweep_trajectories(shooting, sweep, lyap_data,
 
     fig.suptitle(
         'Literal Segmented Bezier Collocation — N-sweep vs. Shooting',
-        fontsize=14, fontweight='bold', color='#c9d1d9', y=0.98,
+        fontsize=14, fontweight='bold', color='black', y=0.98,
     )
 
     for idx, r in enumerate(sweep):
         ax = fig.add_subplot(gs[idx // n_cols, idx % n_cols])
-        ax.set_facecolor('#0d1117')
+        ax.set_facecolor('white')
 
         ax.plot(sol_L1.y[0], sol_L1.y[1], '-', color='#3fb950',
                 alpha=0.35, lw=1.2, label='L1 Lyapunov')
@@ -128,15 +128,15 @@ def plot_sweep_trajectories(shooting, sweep, lyap_data,
                 endpoints = np.array([seg[0][:2] for seg in r['segments']]
                                      + [r['segments'][-1][-1][:2]])
                 ax.plot(endpoints[:, 0], endpoints[:, 1], 'o',
-                        color='#f85149', ms=5, mec='white', mew=0.8,
+                        color='#f85149', ms=5, mec='black', mew=0.8,
                         zorder=9, label='Segment boundaries')
 
         ax.plot(1 - MU, 0, 'o', color='#95a5a6', ms=7,
-                mec='#30363d', mew=0.8, zorder=10)
+                mec='black', mew=0.8, zorder=10)
         ax.plot(xL1, 0, 'D', color='#f39c12', ms=6,
-                mec='#30363d', mew=0.8, zorder=10)
+                mec='black', mew=0.8, zorder=10)
         ax.plot(xL2, 0, 'D', color='#f85149', ms=6,
-                mec='#30363d', mew=0.8, zorder=10)
+                mec='black', mew=0.8, zorder=10)
 
         pad = 0.04
         ax.set_xlim(xL1 - 0.04, xL2 + 0.04)
@@ -147,28 +147,27 @@ def plot_sweep_trajectories(shooting, sweep, lyap_data,
         ) + pad
         ax.set_ylim(-y_ext, y_ext)
         ax.set_aspect('equal')
-        ax.grid(True, alpha=0.15, color='#8b949e')
+        ax.grid(True, alpha=0.3, color='gray')
 
         flag = 'converged' if (r['success'] and r['max_defect'] < 1e-4) \
             else 'not converged'
         ax.set_title(
             f"N = {r['N']} — {flag}   "
             f"(J = {r['cost']:.4f},  max|defect| = {r['max_defect']:.1e})",
-            fontsize=10, color='#c9d1d9', fontweight='bold',
+            fontsize=10, color='black', fontweight='bold',
         )
-        ax.set_xlabel('x (rotating frame)', fontsize=9, color='#c9d1d9')
-        ax.set_ylabel('y (rotating frame)', fontsize=9, color='#c9d1d9')
-        ax.tick_params(colors='#c9d1d9')
+        ax.set_xlabel('x (rotating frame)', fontsize=9, color='black')
+        ax.set_ylabel('y (rotating frame)', fontsize=9, color='black')
+        ax.tick_params(colors='black')
         for spine in ax.spines.values():
-            spine.set_color('#30363d')
-        if idx == 0:
-            ax.legend(fontsize=7.5, loc='upper left', framealpha=0.9,
-                      facecolor='#161b22', edgecolor='#30363d',
-                      labelcolor='white', handlelength=1.5,
-                      borderpad=0.4, labelspacing=0.35)
+            spine.set_color('black')
+        ax.legend(fontsize=7.5, loc='upper left', framealpha=0.9,
+                  facecolor='white', edgecolor='black',
+                  labelcolor='black', handlelength=1.5,
+                  borderpad=0.4, labelspacing=0.35)
 
     fname = f'{save_prefix}_trajectories.png'
-    plt.savefig(fname, dpi=150, facecolor='#0d1117')
+    plt.savefig(fname, dpi=150, facecolor='white', edgecolor='white')
     print(f"\nSaved: {fname}")
     plt.close(fig)
     return fname
@@ -182,7 +181,7 @@ def plot_sweep_convergence(shooting, sweep,
       (2) wall-clock vs N
       (3) max |defect| vs N
     """
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4.8), facecolor='#0d1117')
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.8), facecolor='white')
 
     Ns = np.array([r['N'] for r in sweep])
     costs = np.array([r['cost'] for r in sweep])
@@ -193,7 +192,7 @@ def plot_sweep_convergence(shooting, sweep,
 
     # Panel 1: Cost
     ax = axes[0]
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.axhline(shooting['cost'], color='#58a6ff', ls='--', lw=1.5,
                label=f"Shooting baseline = {shooting['cost']:.5f}")
     # Converged points
@@ -209,20 +208,20 @@ def plot_sweep_convergence(shooting, sweep,
     ax.set_yscale('log')
     ax.set_xticks(Ns)
     ax.set_xticklabels([str(n) for n in Ns])
-    ax.set_xlabel('N segments', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel(r'$J = \int |u|^2 \, dt$', fontsize=10, color='#c9d1d9')
+    ax.set_xlabel('N segments', fontsize=10, color='black')
+    ax.set_ylabel(r'$J = \int |u|^2 \, dt$', fontsize=10, color='black')
     ax.set_title('Cost vs. mesh count (log-log)', fontsize=11,
-                 color='#c9d1d9', fontweight='bold')
-    ax.grid(True, alpha=0.15, color='#8b949e')
-    ax.tick_params(colors='#c9d1d9')
+                 color='black', fontweight='bold')
+    ax.grid(True, alpha=0.3, color='gray')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
+        spine.set_color('black')
     ax.legend(fontsize=8.5, loc='best', framealpha=0.9,
-              facecolor='#161b22', edgecolor='#30363d', labelcolor='white')
+              facecolor='white', edgecolor='black', labelcolor='black')
 
     # Panel 2: Wall-clock
     ax = axes[1]
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.plot(Ns, times, 'o-', color='#3fb950', ms=9, lw=1.8,
             label='SLSQP wallclock')
     ax.axhline(shooting['time_s'], color='#58a6ff', ls='--', lw=1.5,
@@ -231,20 +230,20 @@ def plot_sweep_convergence(shooting, sweep,
     ax.set_yscale('log')
     ax.set_xticks(Ns)
     ax.set_xticklabels([str(n) for n in Ns])
-    ax.set_xlabel('N segments', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel('wall-clock time (s)', fontsize=10, color='#c9d1d9')
+    ax.set_xlabel('N segments', fontsize=10, color='black')
+    ax.set_ylabel('wall-clock time (s)', fontsize=10, color='black')
     ax.set_title('Solve time vs. mesh count (log-log)', fontsize=11,
-                 color='#c9d1d9', fontweight='bold')
-    ax.grid(True, alpha=0.15, color='#8b949e')
-    ax.tick_params(colors='#c9d1d9')
+                 color='black', fontweight='bold')
+    ax.grid(True, alpha=0.3, color='gray')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
+        spine.set_color('black')
     ax.legend(fontsize=8.5, loc='best', framealpha=0.9,
-              facecolor='#161b22', edgecolor='#30363d', labelcolor='white')
+              facecolor='white', edgecolor='black', labelcolor='black')
 
     # Panel 3: Max defect
     ax = axes[2]
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     # Only plot positive defects (some may be zero for failed runs)
     mask = defects > 0
     ax.semilogy(Ns[mask], defects[mask], 'o-',
@@ -254,24 +253,24 @@ def plot_sweep_convergence(shooting, sweep,
     ax.set_xscale('log', base=2)
     ax.set_xticks(Ns)
     ax.set_xticklabels([str(n) for n in Ns])
-    ax.set_xlabel('N segments', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel(r'$\max |\mathrm{defect}|$', fontsize=10, color='#c9d1d9')
+    ax.set_xlabel('N segments', fontsize=10, color='black')
+    ax.set_ylabel(r'$\max |\mathrm{defect}|$', fontsize=10, color='black')
     ax.set_title('Constraint violation vs. mesh count', fontsize=11,
-                 color='#c9d1d9', fontweight='bold')
-    ax.grid(True, alpha=0.15, color='#8b949e', which='both')
-    ax.tick_params(colors='#c9d1d9')
+                 color='black', fontweight='bold')
+    ax.grid(True, alpha=0.3, color='gray', which='both')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
+        spine.set_color('black')
     ax.legend(fontsize=8.5, loc='best', framealpha=0.9,
-              facecolor='#161b22', edgecolor='#30363d', labelcolor='white')
+              facecolor='white', edgecolor='black', labelcolor='black')
 
     fig.suptitle(
         'Literal Segmented Bezier — mesh refinement cascade',
-        fontsize=13, fontweight='bold', color='#c9d1d9', y=1.00,
+        fontsize=13, fontweight='bold', color='black', y=1.00,
     )
     plt.tight_layout()
     fname = f'{save_prefix}_convergence.png'
-    plt.savefig(fname, dpi=150, facecolor='#0d1117', bbox_inches='tight')
+    plt.savefig(fname, dpi=150, facecolor='white', edgecolor='white', bbox_inches='tight')
     print(f"Saved: {fname}")
     plt.close(fig)
     return fname

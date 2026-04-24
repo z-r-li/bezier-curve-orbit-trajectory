@@ -193,16 +193,16 @@ def plot_comparison(shooting, bezier):
     from scipy.interpolate import interp1d
 
     fig = plt.figure(figsize=(18, 11))
-    fig.patch.set_facecolor('#0d1117')
+    fig.patch.set_facecolor('white')
     gs = fig.add_gridspec(2, 3, hspace=0.32, wspace=0.30,
                           left=0.06, right=0.97, top=0.92, bottom=0.07)
 
     fig.suptitle('Earth-Mars Transfer: Shooting vs Bézier (IPOPT)',
-                 fontsize=15, fontweight='bold', y=0.97, color='#c9d1d9')
+                 fontsize=15, fontweight='bold', y=0.97, color='black')
 
     # ---- Panel 1: Trajectories ----
     ax = fig.add_subplot(gs[0, 0])
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     # Full orbit arcs
     earth_orbit_t = np.linspace(0, 2 * np.pi, 300)
     ax.plot(A_EARTH * np.cos(earth_orbit_t), A_EARTH * np.sin(earth_orbit_t),
@@ -221,26 +221,26 @@ def plot_comparison(shooting, bezier):
             zorder=10)
     ax.annotate('Sun', (0, 0), textcoords='offset points',
                 xytext=(8, 8), fontsize=8, color='#f39c12')
-    ax.plot(R0[0], R0[1], 'o', color='#3498db', ms=7, mec='#2c3e50', mew=0.8,
+    ax.plot(R0[0], R0[1], 'o', color='#3498db', ms=7, mec='black', mew=0.8,
             zorder=10, label='Earth (dep)')
     ax.plot(POS_MARS_F[0], POS_MARS_F[1], 'o', color='#f85149', ms=7,
-            mec='#2c3e50', mew=0.8, zorder=10, label='Mars (arr)')
+            mec='black', mew=0.8, zorder=10, label='Mars (arr)')
 
     ax.set_aspect('equal')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+    ax.grid(True, alpha=0.3, color='gray')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
-    ax.set_xlabel('x (AU)', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel('y (AU)', fontsize=10, color='#c9d1d9')
-    ax.set_title('Transfer Trajectory', fontsize=11, fontweight='bold', color='#c9d1d9')
-    ax.tick_params(colors='#8b949e')
+        spine.set_color('black')
+    ax.set_xlabel('x (AU)', fontsize=10, color='black')
+    ax.set_ylabel('y (AU)', fontsize=10, color='black')
+    ax.set_title('Transfer Trajectory', fontsize=11, fontweight='bold', color='black')
+    ax.tick_params(colors='black')
     ax.legend(fontsize=8, loc='upper left', framealpha=0.9,
-              handlelength=1.5, borderpad=0.4, facecolor='#161b22',
-              edgecolor='#30363d', labelcolor='#c9d1d9')
+              handlelength=1.5, borderpad=0.4, facecolor='white',
+              edgecolor='black', labelcolor='black')
 
     # ---- Panel 2: Trajectory difference ----
     ax = fig.add_subplot(gs[0, 1])
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     t_c = bezier['t']
     mask = (t_c >= T0 + 0.01) & (t_c <= TF - 0.01)
     t_c_m = t_c[mask]
@@ -252,13 +252,13 @@ def plot_comparison(shooting, bezier):
 
     ax.semilogy(t_c_m, pos_diff, '-', color='#58a6ff', lw=1.5)
     ax.fill_between(t_c_m, pos_diff, alpha=0.15, color='#58a6ff')
-    ax.set_xlabel('Time', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel('||Δr|| (AU)', fontsize=10, color='#c9d1d9')
-    ax.set_title('Trajectory Difference', fontsize=11, fontweight='bold', color='#c9d1d9')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+    ax.set_xlabel('Time', fontsize=10, color='black')
+    ax.set_ylabel('||Δr|| (AU)', fontsize=10, color='black')
+    ax.set_title('Trajectory Difference', fontsize=11, fontweight='bold', color='black')
+    ax.grid(True, alpha=0.3, color='gray')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
-    ax.tick_params(colors='#8b949e')
+        spine.set_color('black')
+    ax.tick_params(colors='black')
 
     idx_max = np.argmax(pos_diff)
     ax.annotate(f'max = {pos_diff[idx_max]:.2e}',
@@ -266,29 +266,29 @@ def plot_comparison(shooting, bezier):
                 xytext=(0.55, 0.85), textcoords='axes fraction',
                 fontsize=9, color='#f85149',
                 arrowprops=dict(arrowstyle='->', color='#f85149', lw=1),
-                bbox=dict(boxstyle='round,pad=0.2', fc='#161b22',
+                bbox=dict(boxstyle='round,pad=0.2', fc='white',
                           ec='#f85149', alpha=0.8))
 
     # ---- Panel 3: Control magnitude ----
     ax = fig.add_subplot(gs[0, 2])
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.plot(shooting['t'], shooting['u_mag'], '-', color='#58a6ff', lw=1.8,
             label='Shooting', alpha=0.9)
     ax.plot(bezier['t'], bezier['u_mag'], '--', color='#f85149', lw=1.8,
             label='Bézier (IPOPT)', alpha=0.8)
-    ax.set_xlabel('Time', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel('|u| (thrust magnitude)', fontsize=10, color='#c9d1d9')
-    ax.set_title('Control Magnitude', fontsize=11, fontweight='bold', color='#c9d1d9')
-    ax.legend(fontsize=9, loc='best', framealpha=0.9, facecolor='#161b22',
-              edgecolor='#30363d', labelcolor='#c9d1d9')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+    ax.set_xlabel('Time', fontsize=10, color='black')
+    ax.set_ylabel('|u| (thrust magnitude)', fontsize=10, color='black')
+    ax.set_title('Control Magnitude', fontsize=11, fontweight='bold', color='black')
+    ax.legend(fontsize=9, loc='best', framealpha=0.9, facecolor='white',
+              edgecolor='black', labelcolor='black')
+    ax.grid(True, alpha=0.3, color='gray')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
-    ax.tick_params(colors='#8b949e')
+        spine.set_color('black')
+    ax.tick_params(colors='black')
 
     # ---- Panel 4: Control components ----
     ax = fig.add_subplot(gs[1, 0])
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.plot(shooting['t'], shooting['ux'], '-', color='#58a6ff', lw=1.5,
             label='$u_x$ (shoot)')
     ax.plot(shooting['t'], shooting['uy'], '--', color='#58a6ff', lw=1.5,
@@ -297,20 +297,20 @@ def plot_comparison(shooting, bezier):
             alpha=0.7, label='$u_x$ (Bézier)')
     ax.plot(bezier['t'], bezier['uy'], '--', color='#f85149', lw=1.5,
             alpha=0.7, label='$u_y$ (Bézier)')
-    ax.set_xlabel('Time', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel('Control component', fontsize=10, color='#c9d1d9')
-    ax.set_title('Control Components', fontsize=11, fontweight='bold', color='#c9d1d9')
+    ax.set_xlabel('Time', fontsize=10, color='black')
+    ax.set_ylabel('Control component', fontsize=10, color='black')
+    ax.set_title('Control Components', fontsize=11, fontweight='bold', color='black')
     ax.legend(fontsize=8.5, ncol=2, loc='best', framealpha=0.9,
-              columnspacing=1.0, handlelength=1.8, facecolor='#161b22',
-              edgecolor='#30363d', labelcolor='#c9d1d9')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+              columnspacing=1.0, handlelength=1.8, facecolor='white',
+              edgecolor='black', labelcolor='black')
+    ax.grid(True, alpha=0.3, color='gray')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
-    ax.tick_params(colors='#8b949e')
+        spine.set_color('black')
+    ax.tick_params(colors='black')
 
     # ---- Panel 5: Bézier control points overlay ----
     ax = fig.add_subplot(gs[1, 1])
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     mars_x = A_MARS * np.cos(V_MARS + VEL_MARS * np.linspace(T0, TF, 300))
     mars_y = A_MARS * np.sin(V_MARS + VEL_MARS * np.linspace(T0, TF, 300))
     ax.plot(mars_x, mars_y, ':', color='#f85149', alpha=0.3, lw=0.8)
@@ -324,24 +324,24 @@ def plot_comparison(shooting, bezier):
         ax.plot(cp[:, 0], cp[:, 1], 'o-', color=colors[i], ms=3,
                 alpha=0.6, lw=0.5, label=lbl)
 
-    ax.plot(R0[0], R0[1], 'o', color='#3498db', ms=7, mec='#2c3e50', mew=0.8,
+    ax.plot(R0[0], R0[1], 'o', color='#3498db', ms=7, mec='black', mew=0.8,
             zorder=10)
     ax.plot(POS_MARS_F[0], POS_MARS_F[1], 'o', color='#f85149', ms=7,
-            mec='#2c3e50', mew=0.8, zorder=10)
+            mec='black', mew=0.8, zorder=10)
     ax.set_aspect('equal')
-    ax.grid(True, alpha=0.15, color='#8b949e')
+    ax.grid(True, alpha=0.3, color='gray')
     for spine in ax.spines.values():
-        spine.set_color('#30363d')
-    ax.set_xlabel('x (AU)', fontsize=10, color='#c9d1d9')
-    ax.set_ylabel('y (AU)', fontsize=10, color='#c9d1d9')
-    ax.set_title('Bézier Control Points', fontsize=11, fontweight='bold', color='#c9d1d9')
-    ax.tick_params(colors='#8b949e')
-    ax.legend(fontsize=8, loc='upper left', framealpha=0.9, facecolor='#161b22',
-              edgecolor='#30363d', labelcolor='#c9d1d9')
+        spine.set_color('black')
+    ax.set_xlabel('x (AU)', fontsize=10, color='black')
+    ax.set_ylabel('y (AU)', fontsize=10, color='black')
+    ax.set_title('Bézier Control Points', fontsize=11, fontweight='bold', color='black')
+    ax.tick_params(colors='black')
+    ax.legend(fontsize=8, loc='upper left', framealpha=0.9, facecolor='white',
+              edgecolor='black', labelcolor='black')
 
     # ---- Panel 6: Stats table ----
     ax = fig.add_subplot(gs[1, 2])
-    ax.set_facecolor('#0d1117')
+    ax.set_facecolor('white')
     ax.axis('off')
     table_data = [
         ['Metric', 'Shooting', 'Bézier (IPOPT)'],
@@ -362,23 +362,23 @@ def plot_comparison(shooting, bezier):
     table.set_fontsize(10)
     table.scale(1.0, 1.8)
     for (i, j), cell in table.get_celld().items():
-        cell.set_edgecolor('#30363d')
+        cell.set_edgecolor('black')
         if i == 0:
-            cell.set_facecolor('#1f3460')
-            cell.set_text_props(color='white', fontweight='bold', fontsize=10)
+            cell.set_facecolor('white')
+            cell.set_text_props(color='black', fontweight='bold', fontsize=10)
         elif j == 0:
-            cell.set_facecolor('#161b22')
-            cell.set_text_props(fontweight='bold', fontsize=9.5, color='#c9d1d9')
+            cell.set_facecolor('white')
+            cell.set_text_props(fontweight='bold', fontsize=9.5, color='black')
         elif i % 2 == 0:
-            cell.set_facecolor('#161b22')
-            cell.set_text_props(color='#c9d1d9')
+            cell.set_facecolor('white')
+            cell.set_text_props(color='black')
         else:
-            cell.set_facecolor('#0d1117')
-            cell.set_text_props(color='#c9d1d9')
+            cell.set_facecolor('white')
+            cell.set_text_props(color='black')
     ax.set_title('Performance Comparison', pad=15, fontsize=11,
-                 fontweight='bold', color='#c9d1d9')
+                 fontweight='bold', color='black')
 
-    plt.savefig('comparison_shooting_vs_bezier.png', dpi=150, facecolor='#0d1117')
+    plt.savefig('comparison_shooting_vs_bezier.png', dpi=150, facecolor='white', edgecolor='white')
     print("Saved: comparison_shooting_vs_bezier.png")
 
 
@@ -394,19 +394,19 @@ def create_animation(shooting, bezier, fps=30, duration_s=8):
     n_frames = fps * duration_s
 
     fig, (ax_s, ax_b) = plt.subplots(1, 2, figsize=(14, 6))
-    fig.patch.set_facecolor('#1a1a2e')
+    fig.patch.set_facecolor('white')
 
     for ax, title in [(ax_s, 'Shooting Method'), (ax_b, 'Bézier Collocation')]:
-        ax.set_facecolor('#16213e')
+        ax.set_facecolor('white')
         ax.set_aspect('equal')
         ax.set_xlim(-2.0, 2.0); ax.set_ylim(-2.0, 2.0)
-        ax.set_xlabel('x (AU)', color='white')
-        ax.set_ylabel('y (AU)', color='white')
-        ax.set_title(title, color='white', fontsize=14, fontweight='bold')
-        ax.tick_params(colors='white')
+        ax.set_xlabel('x (AU)', color='black')
+        ax.set_ylabel('y (AU)', color='black')
+        ax.set_title(title, color='black', fontsize=14, fontweight='bold')
+        ax.tick_params(colors='black')
         for spine in ax.spines.values():
-            spine.set_color('#444')
-        ax.grid(True, alpha=0.15, color='white')
+            spine.set_color('black')
+        ax.grid(True, alpha=0.3, color='gray')
 
     # Precompute Mars orbit
     t_mars = np.linspace(0, 2 * np.pi / VEL_MARS, 300)
@@ -446,7 +446,7 @@ def create_animation(shooting, bezier, fps=30, duration_s=8):
         cp_plots.append((p, cp))
 
     # Time title
-    time_text = fig.suptitle('', color='white', fontsize=12, y=0.98)
+    time_text = fig.suptitle('', color='black', fontsize=12, y=0.98)
 
     # Index mappings
     n_s = len(shooting['t'])

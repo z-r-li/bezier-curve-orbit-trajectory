@@ -132,7 +132,7 @@ def main() -> int:
     # =================================================================
     # Plot
     # =================================================================
-    fig, ax = plt.subplots(figsize=(8.5, 6.2))
+    fig, ax = plt.subplots(figsize=(8.5, 6.2), facecolor='white')
 
     # A tiny floor so the PMP point is visible on a log axis (|J-J*| = 0
     # itself would be -inf).
@@ -196,11 +196,11 @@ def main() -> int:
     ax.grid(True, which="major", alpha=0.4)
     ax.grid(True, which="minor", alpha=0.15)
     ax.minorticks_on()
-    ax.legend(loc="lower left", fontsize=9, framealpha=0.92)
+    ax.legend(loc="lower left", fontsize=9, framealpha=0.92, facecolor='white', edgecolor='black', labelcolor='black')
 
     fig.tight_layout()
     out_path = _HERE / "pareto_J_error_vs_wall_time.png"
-    fig.savefig(out_path, dpi=180)
+    fig.savefig(out_path, dpi=180, facecolor='white', edgecolor='white')
     plt.close(fig)
     print(f"Wrote {out_path}")
 

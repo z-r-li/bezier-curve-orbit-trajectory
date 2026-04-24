@@ -205,7 +205,7 @@ def make_plot(series_list, out_path, mu=MU):
 
     Chooses linear vs symlog Y-scale based on dynamic range.
     """
-    fig, ax = plt.subplots(figsize=(9, 5.5))
+    fig, ax = plt.subplots(figsize=(9, 5.5), facecolor='white')
 
     # Compute series first to decide on axis scaling.
     computed = []
@@ -263,7 +263,7 @@ def make_plot(series_list, out_path, mu=MU):
     ax.set_ylabel(r"$\Delta C(t) = C(t) - C(0)$")
     ax.set_title("Jacobi constant along Phase 1 transfer — three-method cross-validation")
     ax.grid(True, alpha=0.25)
-    ax.legend(loc="best", fontsize=9, framealpha=0.9)
+    ax.legend(loc="best", fontsize=9, framealpha=0.9, facecolor='white', edgecolor='black', labelcolor='black')
 
     # Caption-style annotation inside the axes: makes explicit that the trace
     # is thrust-induced physics, not method error, so the figure is not
@@ -283,7 +283,7 @@ def make_plot(series_list, out_path, mu=MU):
     )
 
     plt.tight_layout()
-    fig.savefig(out_path, dpi=150)
+    fig.savefig(out_path, dpi=150, facecolor='white', edgecolor='white')
     plt.close(fig)
 
     return computed
